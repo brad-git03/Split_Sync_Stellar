@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useStellarWallet } from "@/hooks/useStellarWallet";
 import { prepareInitTx, preparePayTx, submitTx, getTokenBalance, formatTokenAmount } from "@/utils/soroban";
+import { validateStellarAddress, validateContractAddress } from "@/utils/validation";
 
 interface ShareInput {
   recipient: string;
@@ -60,15 +61,6 @@ export default function Dashboard() {
   // Validation for Init Tab
   const totalBasisPoints = shares.reduce((acc, curr) => acc + (curr.basisPoints || 0), 0);
   const isBasisPointsValid = totalBasisPoints === 10000;
-  
-  const validateStellarAddress = (addr: string) => {
-    return /^G[A-Z2-7]{55}$/.test(addr);
-  };
-
-  const validateContractAddress = (addr: string) => {
-    return /^[GC][A-Z2-7]{55}$/.test(addr);
-  };
-
   // Balance state
   const [tokenBalance, setTokenBalance] = useState<string | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
