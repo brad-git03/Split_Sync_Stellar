@@ -1,3 +1,8 @@
+/**
+ * SplitSync frontend integration handlers.
+ * Interacts with Soroban Smart Contracts via @stellar/stellar-sdk.
+ */
+
 import {
   Contract,
   Address,
