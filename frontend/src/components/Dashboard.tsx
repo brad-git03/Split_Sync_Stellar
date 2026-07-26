@@ -500,11 +500,11 @@ export default function Dashboard() {
                   </div>
                   <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                     {(() => {
-                      let cumulative = 0n;
+                      let cumulative = BigInt(0);
                       const total = BigInt(amount || "0");
                       const estPayouts = shares.map((share, idx) => {
                         const basisPoints = BigInt(share.basisPoints || 0);
-                        let payout = 0n;
+                        let payout = BigInt(0);
                         if (idx === shares.length - 1) {
                           payout = total - cumulative;
                         } else {
