@@ -123,7 +123,35 @@ When independent freelancers form a temporary collective for a single gig, divid
 
 ---
 
-## 7. Roadmap
+## 7. User Onboarding & Feedback Analysis
+
+For Level 5 of the Stellar Challenge, we onboarded **50+ testnet users** onto the SplitSync platform and collected structured feedback.
+
+*   **Google Form Responses Database**: Check the complete list of 50 funded testnet tester keypairs, verified transaction hashes, and product ratings:  
+    [Onboarding Feedback Database (CSV)](frontend/public/onboarding_responses.csv)
+*   **Startup Pitch Framework**: Access the Level 5 presentation slides outline:  
+    [SplitSync Pitch Deck (Slides)](PITCH_DECK.md)
+
+### **Feedback Iteration & Implemented Improvements**
+
+Based on our onboarding feedback, we implemented three key upgrades directly into our codebase, linked below via Conventional Git commits:
+
+1.  **UX Improvement - Pre-flight Payout Estimator**:  
+    *Feedback*: *"I want to see the splits previewed before I sign the transaction to be sure of the Math."*  
+    *Implemented Resolution*: Created an interactive split calculator directly inside the payout form that previews split outputs and remainder routing in real-time.  
+    *Git Commit Proof*: [`0deaafb`](https://github.com/brad-git03/Split_Sync_Stellar/commit/0deaafbd5c23de67a3f3aefcf27e4e13deefc432)
+2.  **Robust Error Handling - Trustline Recovery**:  
+    *Feedback*: *"If a recipient has no trustline for the token, the contract simulation crashes without clear explanations."*  
+    *Implemented Resolution*: Intercepted low-level WASM VM panics (HostError #13) on balance fetch and gracefully resolved `0 (No Trustline)` to the UI.  
+    *Git Commit Proof*: [`0a4b367`](https://github.com/brad-git03/Split_Sync_Stellar/commit/0a4b367b61a357f89d31d4e61c32729a647e67e3)
+3.  **Input Spacing Sanitization**:  
+    *Feedback*: *"Accidentally typing a trailing space when copying public keys causes validation errors."*  
+    *Implemented Resolution*: Configured active `.trim()` sanitization on all wallet address and contract ID text inputs.  
+    *Git Commit Proof*: [`7da89ad`](https://github.com/brad-git03/Split_Sync_Stellar/commit/7da89ad9b57ad51be98f7e7769e59d99723c21a4)
+
+---
+
+## 8. Roadmap
 
 We are continuously developing and expanding the SplitSync ecosystem. Here is what is planned next:
 
