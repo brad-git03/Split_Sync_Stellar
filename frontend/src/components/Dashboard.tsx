@@ -489,6 +489,56 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Pre-Flight Split Estimator */}
+              {shares.length > 0 && Number(amount) > 0 && (
+                <div className="bg-obsidian border border-border-slate/60 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Pre-Flight Split Estimator</h4>
+                    <span className="text-[10px] text-emerald-mint font-semibold bg-emerald-mint/10 px-2 py-0.5 rounded-full">
+                      Pre-flight Calculator
+                    </span>
+                  </div>
+                  <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                    {(() => {
+                      let cumulative = 0n;
+                      const total = BigInt(amount || "0");
+                      const estPayouts = shares.map((share, idx) => {
+                        const basisPoints = BigInt(share.basisPoints || 0);
+                        let payout = 0n;
+                        if (idx === shares.length - 1) {
+                          payout = total - cumulative;
+                        } else {
+                          payout = (total * basisPoints) / BigInt(10000);
+                          cumulative += payout;
+                        }
+                        return {
+                          ...share,
+                          payout: formatTokenAmount(String(payout)),
+                        };
+                      });
+
+                      return estPayouts.map((est, idx) => {
+                        const percentage = ((est.basisPoints || 0) / 100).toFixed(1);
+                        const truncRecipient = est.recipient.length > 12 
+                          ? `${est.recipient.slice(0, 6)}...${est.recipient.slice(-6)}` 
+                          : est.recipient;
+
+                        return (
+                          <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-layer/40 rounded border border-border-slate/30">
+                            <span className="font-mono text-white" title={est.recipient}>{truncRecipient}</span>
+                            <div className="text-right">
+                              <span className="font-bold text-emerald-mint">{est.payout} Units</span>
+                              <span className="text-[9px] text-muted-silver ml-1.5">({percentage}%)</span>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+
+
               {/* Pay Action Button */}
               {status !== "connected" ? (
                 <button
