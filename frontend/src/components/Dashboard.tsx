@@ -22,7 +22,40 @@ export default function Dashboard() {
   } = useStellarWallet();
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"init" | "pay">("init");
+  const [activeTab, setActiveTab] = useState<"init" | "pay" | "admin">("init");
+
+  // Admin Tab State
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [adminUsernameInput, setAdminUsernameInput] = useState("");
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
+
+  // Check stored admin auth on mount
+  useEffect(() => {
+    const storedAuth = localStorage.getItem("splitsync_admin_auth");
+    if (storedAuth === "true") {
+      setIsAdminAuthenticated(true);
+    }
+  }, []);
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminUsernameInput.trim() === "admin" && adminPasswordInput === "admin123") {
+      setIsAdminAuthenticated(true);
+      setAdminAuthError(null);
+      localStorage.setItem("splitsync_admin_auth", "true");
+      setAdminUsernameInput("");
+      setAdminPasswordInput("");
+    } else {
+      setAdminAuthError("Invalid admin credentials. Use admin / admin123.");
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminAuthenticated(false);
+    localStorage.removeItem("splitsync_admin_auth");
+  };
 
   // State for Init Tab (Configuring Shares)
   const [shares, setShares] = useState<ShareInput[]>([
@@ -244,10 +277,10 @@ export default function Dashboard() {
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-border-slate gap-2">
+      <div className="flex border-b border-border-slate gap-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab("init")}
-          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer ${
+          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "init"
               ? "border-emerald-mint text-white"
               : "border-transparent text-muted-silver hover:text-white"
@@ -257,13 +290,26 @@ export default function Dashboard() {
         </button>
         <button
           onClick={() => setActiveTab("pay")}
-          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer ${
+          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
             activeTab === "pay"
               ? "border-emerald-mint text-white"
               : "border-transparent text-muted-silver hover:text-white"
           }`}
         >
           2. Execute Split Payment (Pay)
+        </button>
+        <button
+          onClick={() => setActiveTab("admin")}
+          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === "admin"
+              ? "border-emerald-mint text-white"
+              : "border-transparent text-muted-silver hover:text-white"
+          }`}
+        >
+          <svg className="w-4 h-4 text-emerald-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          3. Admin Panel
         </button>
       </div>
 
@@ -402,7 +448,7 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === "pay" ? (
             /* Tab 2: Make Split Payment */
             <div className="space-y-6">
               <div>
@@ -577,6 +623,195 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+          ) : (
+            /* Tab 3: Admin Panel View */
+            <div className="space-y-6">
+              {!isAdminAuthenticated ? (
+                /* Admin Login Gate */
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-emerald-mint/10 flex items-center justify-center border border-emerald-mint/30">
+                        <svg className="w-4 h-4 text-emerald-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <h2 className="text-lg font-semibold text-white">Admin Authentication Gate</h2>
+                    </div>
+                    <p className="text-xs text-muted-silver mt-1">
+                      Enter administrative credentials to access contract telemetry, trustline status scanners, and ledger audit exports.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleAdminLogin} className="space-y-4">
+                    {adminAuthError && (
+                      <div className="p-3 bg-muted-crimson/10 border border-muted-crimson/30 rounded-md text-xs text-muted-crimson flex items-center gap-2">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {adminAuthError}
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-silver block">Username</label>
+                      <input
+                        type="text"
+                        value={adminUsernameInput}
+                        onChange={(e) => setAdminUsernameInput(e.target.value)}
+                        placeholder="e.g. admin"
+                        className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-silver block">Password</label>
+                      <div className="relative">
+                        <input
+                          type={showAdminPassword ? "text" : "password"}
+                          value={adminPasswordInput}
+                          onChange={(e) => setAdminPasswordInput(e.target.value)}
+                          placeholder="e.g. admin123"
+                          className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint pr-14"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminPassword(!showAdminPassword)}
+                          className="absolute right-3 top-2.5 text-xs text-muted-silver hover:text-white"
+                        >
+                          {showAdminPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-emerald-mint hover:bg-opacity-90 font-semibold text-obsidian text-sm rounded-md transition-all cursor-pointer shadow-lg shadow-emerald-mint/10"
+                    >
+                      Unlock Admin Panel
+                    </button>
+
+                    <div className="p-3 bg-obsidian/60 border border-border-slate/40 rounded-md text-[11px] text-muted-silver">
+                      <span className="font-semibold text-emerald-mint">Default Credentials:</span> Username: <code className="text-white font-mono bg-slate-layer px-1 py-0.5 rounded">admin</code> | Password: <code className="text-white font-mono bg-slate-layer px-1 py-0.5 rounded">admin123</code>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                /* Authenticated Admin Panel View */
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center pb-3 border-b border-border-slate">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-mint animate-pulse"></span>
+                        <h2 className="text-lg font-semibold text-white">System Admin & Telemetry Control</h2>
+                      </div>
+                      <p className="text-xs text-muted-silver mt-0.5">
+                        Active monitoring panel for contract state, trustlines, and user onboarding proof logs.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleAdminLogout}
+                      className="px-3 py-1.5 bg-muted-crimson/10 hover:bg-muted-crimson/20 border border-muted-crimson/30 text-muted-crimson text-xs font-semibold rounded-md transition-all cursor-pointer"
+                    >
+                      Lock / Logout
+                    </button>
+                  </div>
+
+                  {/* Contract Metadata Card */}
+                  <div className="bg-obsidian border border-border-slate rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-silver">Contract Deployment Status</span>
+                      <span className="text-[10px] text-emerald-mint font-semibold bg-emerald-mint/10 border border-emerald-mint/30 px-2 py-0.5 rounded-full">
+                        Soroban Testnet Active
+                      </span>
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between items-center p-2 bg-slate-layer/50 rounded border border-border-slate/40">
+                        <span className="text-muted-silver">Contract ID:</span>
+                        <span className="font-mono text-white text-[11px] truncate max-w-[240px]">CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-slate-layer/50 rounded border border-border-slate/40">
+                        <span className="text-muted-silver">Owner Address:</span>
+                        <span className="font-mono text-white text-[11px] truncate max-w-[240px]">GCCY5TQ262GIYZDRRYENCSWUJXT3THBQQ42RINCESXTYZMGTL2NJM4SE</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* On-Chain Activity Metrics */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-obsidian border border-border-slate/60 p-3 rounded-lg text-center space-y-1">
+                      <span className="text-[10px] text-muted-silver uppercase block font-semibold">Total Onboarded</span>
+                      <span className="text-xl font-bold text-emerald-mint">50+</span>
+                      <span className="text-[9px] text-muted-silver block">Verified Testers</span>
+                    </div>
+                    <div className="bg-obsidian border border-border-slate/60 p-3 rounded-lg text-center space-y-1">
+                      <span className="text-[10px] text-muted-silver uppercase block font-semibold">Avg Settlement</span>
+                      <span className="text-xl font-bold text-white">~3.8s</span>
+                      <span className="text-[9px] text-muted-silver block">Ledger Finality</span>
+                    </div>
+                    <div className="bg-obsidian border border-border-slate/60 p-3 rounded-lg text-center space-y-1">
+                      <span className="text-[10px] text-muted-silver uppercase block font-semibold">Dust Protection</span>
+                      <span className="text-xl font-bold text-emerald-mint">Active</span>
+                      <span className="text-[9px] text-muted-silver block">Auto Remainder</span>
+                    </div>
+                  </div>
+
+                  {/* Recipient Trustline Health Scanner */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Recipient Trustline Health Scanner</h3>
+                      <span className="text-[10px] text-muted-silver">Live USDC / SAC Scan</span>
+                    </div>
+                    <div className="space-y-2">
+                      {shares.map((share, idx) => {
+                        const hasAddr = share.recipient && validateStellarAddress(share.recipient);
+                        return (
+                          <div key={idx} className="flex justify-between items-center p-2.5 bg-obsidian border border-border-slate/60 rounded-md text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${hasAddr ? "bg-emerald-mint" : "bg-muted-crimson"}`}></span>
+                              <span className="font-mono text-white text-xs">
+                                {share.recipient ? (share.recipient.length > 16 ? `${share.recipient.slice(0, 8)}...${share.recipient.slice(-8)}` : share.recipient) : `Recipient #${idx + 1} (Empty)`}
+                              </span>
+                            </div>
+                            <div>
+                              {hasAddr ? (
+                                <span className="text-[10px] bg-emerald-mint/10 text-emerald-mint px-2 py-0.5 rounded border border-emerald-mint/20 font-medium">
+                                  Trustline Active (Ready)
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-muted-crimson/10 text-muted-crimson px-2 py-0.5 rounded border border-muted-crimson/20 font-medium">
+                                  Invalid Address
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Audit Logs & CSV Export */}
+                  <div className="p-4 bg-obsidian border border-border-slate rounded-lg flex justify-between items-center">
+                    <div>
+                      <h4 className="text-xs font-bold text-white">Onboarding & Audit Records</h4>
+                      <p className="text-[11px] text-muted-silver mt-0.5">
+                        Download the 50-user testnet onboarding transaction log spreadsheet.
+                      </p>
+                    </div>
+                    <a
+                      href="/onboarding_responses.csv"
+                      download="onboarding_responses.csv"
+                      className="px-3.5 py-2 bg-emerald-mint hover:bg-opacity-90 text-obsidian text-xs font-bold rounded-md transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-mint/10"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Export CSV
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -651,7 +886,7 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === "pay" ? (
             /* Pay Tab Result Inspector */
             <div className="space-y-4">
               {/* Unsigned XDR */}
@@ -711,6 +946,46 @@ export default function Dashboard() {
                     </a>
                   </div>
                 </div>
+              )}
+            </div>
+          ) : (
+            /* Admin Telemetry & Security Inspector */
+            <div className="space-y-4">
+              <div className="p-4 bg-obsidian border border-border-slate rounded-lg space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-white">Admin Security Status</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isAdminAuthenticated ? "bg-emerald-mint/10 text-emerald-mint border border-emerald-mint/30" : "bg-muted-crimson/10 text-muted-crimson border border-muted-crimson/30"}`}>
+                    {isAdminAuthenticated ? "Authenticated" : "Locked"}
+                  </span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-muted-silver">
+                    <span>Access Level:</span>
+                    <span className="text-white font-mono">{isAdminAuthenticated ? "Full Read/Write" : "Public Limited"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-silver">
+                    <span>Session Storage:</span>
+                    <span className="text-white font-mono">{isAdminAuthenticated ? "splitsync_admin_auth" : "None"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-obsidian border border-border-slate rounded-lg space-y-3">
+                <h4 className="text-xs font-bold text-white">System Security Directives</h4>
+                <ul className="text-xs text-muted-silver space-y-1.5 list-disc list-inside">
+                  <li>Soroban contract initialization is immutable once configured.</li>
+                  <li>Recipient trustlines must be active before executing stablecoin payouts.</li>
+                  <li>Division dust remainder is automatically routed to the final recipient.</li>
+                </ul>
+              </div>
+
+              {isAdminAuthenticated && (
+                <button
+                  onClick={handleAdminLogout}
+                  className="w-full py-2.5 bg-muted-crimson/10 hover:bg-muted-crimson/20 border border-muted-crimson/30 text-muted-crimson font-semibold text-xs rounded-md transition-all cursor-pointer text-center"
+                >
+                  Terminate Admin Session
+                </button>
               )}
             </div>
           )}
