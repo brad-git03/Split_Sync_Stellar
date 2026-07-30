@@ -133,9 +133,9 @@ To satisfy Level 5 user onboarding and feedback requirements, we conducted a 50-
 
 ### 2. Exported Excel Sheet & Responses Database
 All 50 testnet onboarding responses, verified wallet addresses, and ledger payment transaction hashes are exported into native Microsoft Excel (`.xlsx`) and CSV formats:
+* **Google Sheets Public Web View**: [Live Onboarding Responses Database (Google Sheets)](https://docs.google.com/spreadsheets/d/1rtQCokDAVwLqov9ETOU47rjuBTono8dwVDls4YiLqgs/edit?gid=693037048#gid=693037048)
 * **Exported Excel Sheet (XLSX - Local)**: [onboarding_responses.xlsx](frontend/public/onboarding_responses.xlsx)
 * **Exported Excel Sheet (XLSX - Root Link)**: [onboarding_responses.xlsx](onboarding_responses.xlsx)
-* **Google Sheets Public Web View**: [Live Onboarding Responses Database (Google Sheets)](https://docs.google.com/spreadsheets/d/1SplitSyncOnboardingFeedback50Users/edit?usp=sharing)
 * **Exported CSV Format**: [onboarding_responses.csv](frontend/public/onboarding_responses.csv)
 * **Startup Pitch Framework**: Access the Level 5 presentation slides outline: [SplitSync Pitch Deck (Slides)](PITCH_DECK.md)
 
