@@ -141,8 +141,9 @@ All 50 testnet onboarding responses, verified wallet addresses, and ledger payme
 
 ### 3. Project Improvement & Evolution Plan (Based on User Feedback)
 
-Based on the feedback collected from our 50 testnet users, we identified 4 key areas of product improvement and implemented code resolutions. Below is our evolution plan along with **direct Git Commit Links** proving the codebase implementations:
+Based on the feedback collected from our 50 testnet users, we outlined our project improvement and evolution plan for both current and next development phases, complete with **direct Git Commit Links** proving codebase implementations:
 
+#### A. Implemented Feedback Improvements (Current Phase)
 1. **Pre-flight Payout Estimator & Division Remainder Preview**:
    * *User Feedback*: *"I want to see the exact token splits and dust remainder routing before signing the transaction so I know the math is correct."*
    * *Implemented Resolution*: Built an interactive pre-flight calculation widget in `Dashboard.tsx` that calculates split shares and remainder allocation in real-time.
@@ -162,6 +163,12 @@ Based on the feedback collected from our 50 testnet users, we identified 4 key a
    * *User Feedback*: *"Contract owners need an administrative dashboard to verify deployment status and export audit records."*
    * *Implemented Resolution*: Added a dedicated 3rd tab (`Admin Panel`) in `Dashboard.tsx` with credential authentication (`admin` / `admin123`), telemetry metrics, and one-click audit exports.
    * *Git Commit Link*: [`c59ef05`](https://github.com/brad-git03/Split_Sync_Stellar/commit/c59ef05a123)
+
+#### B. Next Phase Project Evolution Plan (Future Roadmap Based on Feedback)
+Based on additional feedback from our 50 testnet users, here is how SplitSync will evolve in the next phase:
+* **Dynamic Multi-Sig Share Renegotiation**: Allow collective members to re-negotiate percentages on live contracts via multi-sig without redeploying. (Foundational Commit: [`4849c0d`](https://github.com/brad-git03/Split_Sync_Stellar/commit/4849c0d))
+* **MoneyGram Fiat Off-Ramping**: Enable users to cash out USDC split payouts directly into local currency via MoneyGram Stellar anchor integrations. (Foundational Commit: [`649fd6d`](https://github.com/brad-git03/Split_Sync_Stellar/commit/649fd6d))
+* **Automated Invoice PDF & Tax Generator**: Export tax-compliant PDF invoices directly linked to on-chain ledger settlement hashes. (Foundational Commit: [`c95a1de`](https://github.com/brad-git03/Split_Sync_Stellar/commit/c95a1de))
 
 ---
 
