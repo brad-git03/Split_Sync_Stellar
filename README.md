@@ -182,3 +182,15 @@ We are continuously developing and expanding the SplitSync ecosystem. Here is wh
 - [ ] **Automated Tax Ledger & Invoice Reporting**: Generate downloadable tax forms/invoices based on actual split payouts directly fetched from the Stellar ledger.
 - [ ] **Fiat Off-Ramping Integration**: Enable one-click conversion of USDC payouts directly to local fiat bank accounts via Stellar anchor integrations (such as MoneyGram).
 - [ ] **Contract Factory & Templates**: Deploy a master "Contract Factory" allowing anyone to deploy their own payment splitter instantly with customizable templates for different freelance teams.
+
+---
+
+## 9. Security Audit, Open-Source Tutorial & Revision Maintenance Log (August 14, 2026)
+
+To maintain continuous development, active maintenance, and production readiness, the repository includes formal security audits, technical developer guides, and social launch collateral:
+
+* **Smart Contract Security Audit & Assessment**: [SECURITY_AUDIT.md](SECURITY_AUDIT.md) — Comprehensive security review evaluating Soroban Rust `require_auth()`, arithmetic overflow safety, zero-dust math invariants, and WASM panic interception.
+* **Ecosystem Technical Tutorial Blog Post**: [TUTORIAL.md](TUTORIAL.md) — Open-source developer guide titled *"Building Automated Zero-Dust Revenue Splitters on Stellar Soroban"*.
+* **Product Walkthrough & Video Demo Script**: [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — Scene breakdown and narration guide for the 2-minute product walkthrough video.
+* **Product Marketing Launch Thread**: [TWITTER_LAUNCH.md](TWITTER_LAUNCH.md) — Official 5-tweet marketing campaign with `@StellarOrg` and `#Soroban` ecosystem tagging.
+* **Active Maintenance Timestamp**: **August 14, 2026** (Continuous active Git commit status).
