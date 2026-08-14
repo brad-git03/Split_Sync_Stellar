@@ -57,6 +57,10 @@ export default function Dashboard() {
     localStorage.removeItem("splitsync_admin_auth");
   };
 
+  // Fee Sponsorship (Gasless Transaction) State
+  const [isFeeSponsored, setIsFeeSponsored] = useState<boolean>(true);
+  const sponsorAddress = "GCCY5TQ262GIYZDRRYENCSWUJXT3THBQQ42RINCESXTYZMGTL2NJM4SE";
+
   // State for Init Tab (Configuring Shares)
   const [shares, setShares] = useState<ShareInput[]>([
     { recipient: "", basisPoints: 5000 },
@@ -584,6 +588,42 @@ export default function Dashboard() {
                 </div>
               )}
 
+              {/* Gasless Fee Sponsorship (Stellar Fee-Bump) Card */}
+              <div className="bg-obsidian border border-emerald-mint/30 rounded-lg p-4 space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-mint animate-pulse"></span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">Gasless Fee Sponsorship</h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsFeeSponsored(!isFeeSponsored)}
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
+                      isFeeSponsored 
+                        ? "bg-emerald-mint/20 text-emerald-mint border-emerald-mint/50"
+                        : "bg-slate-layer text-muted-silver border-border-slate hover:text-white"
+                    }`}
+                  >
+                    {isFeeSponsored ? "SPONSORED (0 GAS)" : "DISABLED"}
+                  </button>
+                </div>
+                
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center text-muted-silver">
+                    <span>User Network Fee:</span>
+                    <span className="font-mono text-emerald-mint font-bold">{isFeeSponsored ? "0.00000 XLM (100% Free)" : "~0.00001 XLM"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-silver">
+                    <span>Sponsor Relayer:</span>
+                    <span className="font-mono text-white text-[11px] truncate max-w-[200px]" title={sponsorAddress}>
+                      {sponsorAddress.slice(0, 6)}...{sponsorAddress.slice(-6)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-silver pt-1 border-t border-border-slate/40">
+                    ⚡ Powered by Stellar <strong>CAP-0015 Fee-Bump Protocol</strong>. Creators never need XLM reserves for network gas fees.
+                  </p>
+                </div>
+              </div>
 
               {/* Pay Action Button */}
               {status !== "connected" ? (

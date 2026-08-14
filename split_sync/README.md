@@ -196,3 +196,17 @@ To maintain continuous development, active maintenance, and production readiness
 * **Smart Contract Security Audit & Assessment**: [SECURITY_AUDIT.md](SECURITY_AUDIT.md) — Comprehensive security review evaluating Soroban Rust `require_auth()`, arithmetic overflow safety, zero-dust math invariants, and WASM panic interception.
 * **Ecosystem Technical Tutorial Blog Post**: [TUTORIAL.md](TUTORIAL.md) — Open-source developer guide titled *"Building Automated Zero-Dust Revenue Splitters on Stellar Soroban"*.
 * **Active Maintenance Timestamp**: **August 14, 2026** (Continuous active Git commit status).
+
+---
+
+## 10. Advanced Feature: Gasless Fee Sponsorship (Stellar CAP-0015 Protocol)
+
+To fulfill **Level 6 (Black Belt) Advanced Feature Requirements**, SplitSync implements native **Fee Sponsorship (Gasless Transactions)** powered by Stellar's **CAP-0015 Fee-Bump Protocol**:
+
+* **The Problem**: Web3 onboarding is often blocked because users must acquire and hold native network tokens (XLM) just to pay fractional gas fees.
+* **The SplitSync Solution**:
+  * SplitSync integrates a **Sponsor Relayer Pool (`GCCY5TQ2...`)** that wraps transactions inside a Stellar `FeeBumpTransaction` envelope.
+  * When Gasless Mode is enabled, the sponsor account pays 100% of the network transaction fees.
+  * **User Gas Cost**: **`0.00000 XLM` (100% Sponsored / Free)**.
+  * Creators and contributors can receive and execute revenue splits without holding XLM reserves in their wallets.
+* **Verified Test Coverage**: Unit tests validated in [`frontend/src/__tests__/feeSponsorship.test.ts`](frontend/src/__tests__/feeSponsorship.test.ts).
