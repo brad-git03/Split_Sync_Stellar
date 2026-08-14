@@ -128,12 +128,12 @@ When independent freelancers form a temporary collective for a single gig, divid
 To satisfy Level 5 user onboarding and feedback requirements, we conducted a 50-user testnet onboarding campaign.
 
 ### 1. Google Form & Feedback Survey
-* **Google Form Survey Link**: [SplitSync Level 5 User Feedback & Onboarding Form](https://docs.google.com/forms/d/e/1FAIpQLSdrBlPubNd6uZvUOa1OiKbINy6-H_6m-wT89FNaG4w3E1lN5Q/viewform?usp=preview)
+* **Google Form Survey Link**: [SplitSync Level 5 User Feedback & Onboarding Form](https://docs.google.com/forms/d/e/1FAIpQLSew_Dk6XX_yJd9vUFFIAF8iMaaf83nh584NKM2ei7lJc1fF-g/viewform)
 * **Form Fields Collected**: Full Name, Email Address, Stellar Testnet Public Wallet Address (`G...`), Product Rating (1-5 Stars), and Detailed Product Feedback.
 
 ### 2. Exported Excel Sheet & Responses Database
 All 50 testnet onboarding responses, verified wallet addresses, and ledger payment transaction hashes are exported into native Microsoft Excel (`.xlsx`) and CSV formats:
-* **Google Sheets Public Web View**: [Live Onboarding Responses Database (Google Sheets)](https://docs.google.com/spreadsheets/d/1rtQCokDAVwLqov9ETOU47rjuBTono8dwVDls4YiLqgs/edit?gid=693037048#gid=693037048)
+* **Google Sheets Public Web View**: [Live Onboarding Responses Database (Google Sheets)](https://docs.google.com/spreadsheets/d/1wk3purksBoem2jGBLHgHoB1c_fJrlnJXI8lg1unC0aU/edit?usp=sharing)
 * **Exported Excel Sheet (XLSX - Local)**: [onboarding_responses.xlsx](frontend/public/onboarding_responses.xlsx)
 * **Exported Excel Sheet (XLSX - Root Link)**: [onboarding_responses.xlsx](onboarding_responses.xlsx)
 * **Exported CSV Format**: [onboarding_responses.csv](frontend/public/onboarding_responses.csv)
