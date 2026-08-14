@@ -5,6 +5,7 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-yellow?logo=javascript&style=flat-square)
 ![HTML5](https://img.shields.io/badge/HTML5-orange?logo=html5&style=flat-square)
 ![CSS3](https://img.shields.io/badge/CSS3-blue?logo=css3&style=flat-square)
+[![Twitter/X](https://img.shields.io/badge/X-@splitsyncmain-black?logo=x&style=flat-square)](https://x.com/splitsyncmain)
 
 
 ---
@@ -189,8 +190,9 @@ We are continuously developing and expanding the SplitSync ecosystem. Here is wh
 
 To maintain continuous development, active maintenance, and production readiness, the repository includes formal security audits, technical developer guides, and social launch collateral:
 
+* **Official X (Twitter) Channel**: [@splitsyncmain](https://x.com/splitsyncmain)
+* **Product Marketing Launch Thread**: [TWITTER_LAUNCH.md](TWITTER_LAUNCH.md) — Official 5-tweet marketing campaign with `@StellarOrg` and `#Soroban` ecosystem tagging.
+* **Product Walkthrough & Video Demo Script**: [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — Scene breakdown and narration guide for the 2-minute product walkthrough video.
 * **Smart Contract Security Audit & Assessment**: [SECURITY_AUDIT.md](SECURITY_AUDIT.md) — Comprehensive security review evaluating Soroban Rust `require_auth()`, arithmetic overflow safety, zero-dust math invariants, and WASM panic interception.
 * **Ecosystem Technical Tutorial Blog Post**: [TUTORIAL.md](TUTORIAL.md) — Open-source developer guide titled *"Building Automated Zero-Dust Revenue Splitters on Stellar Soroban"*.
-* **Product Walkthrough & Video Demo Script**: [DEMO_SCRIPT.md](DEMO_SCRIPT.md) — Scene breakdown and narration guide for the 2-minute product walkthrough video.
-* **Product Marketing Launch Thread**: [TWITTER_LAUNCH.md](TWITTER_LAUNCH.md) — Official 5-tweet marketing campaign with `@StellarOrg` and `#Soroban` ecosystem tagging.
 * **Active Maintenance Timestamp**: **August 14, 2026** (Continuous active Git commit status).
