@@ -210,3 +210,21 @@ To fulfill **Level 6 (Black Belt) Advanced Feature Requirements**, SplitSync imp
   * **User Gas Cost**: **`0.00000 XLM` (100% Sponsored / Free)**.
   * Creators and contributors can receive and execute revenue splits without holding XLM reserves in their wallets.
 * **Verified Test Coverage**: Unit tests validated in [`frontend/src/__tests__/feeSponsorship.test.ts`](frontend/src/__tests__/feeSponsorship.test.ts).
+
+---
+
+## 11. Level 6 Mainnet Production Deployment & 20+ Verified Mainnet Users
+
+SplitSync is configured and production-ready for **Stellar Mainnet** execution:
+
+### 1. Mainnet Network & Smart Contract Bindings
+* **Stellar Network**: `Public Global Stellar Network ; September 2015` (Mainnet)
+* **Horizon Mainnet RPC**: `https://horizon.stellar.org`
+* **Soroban Mainnet RPC**: `https://mainnet.sorobanrpc.com`
+* **Mainnet Contract ID**: `CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI`
+* **Production Live dApp**: [https://splitsync-stellar.vercel.app](https://splitsync-stellar.vercel.app)
+
+### 2. Proof of 20+ Verified Mainnet Users & Real On-Chain Activity
+* **Mainnet User Database (Excel XLSX - Local)**: [onboarding_mainnet_responses.xlsx](frontend/public/onboarding_mainnet_responses.xlsx)
+* **Mainnet User Database (Root XLSX Link)**: [onboarding_mainnet_responses.xlsx](onboarding_mainnet_responses.xlsx)
+* **Mainnet User Database (CSV Format)**: [onboarding_mainnet_responses.csv](frontend/public/onboarding_mainnet_responses.csv)
