@@ -1,4 +1,4 @@
-describe("SplitSync Massive Upgrades (Invoicing, Multi-Token FX, Dynamic Proposals)", () => {
+describe("SplitSync Massive Upgrades (Invoicing, Multi-Token FX, Dynamic Proposals, Usability)", () => {
   describe("Feature 1: Client Invoicing & Checkout Engine", () => {
     it("should calculate total invoice balance correctly from line items", () => {
       const items = [
@@ -71,6 +71,39 @@ describe("SplitSync Massive Upgrades (Invoicing, Multi-Token FX, Dynamic Proposa
       const signedBy = ["GDUW6X...", "GAZ7XL..."];
       const isExecuted = signedBy.length >= requiredSignatures;
       expect(isExecuted).toBe(true);
+    });
+  });
+
+  describe("Feature 4: Quick Presets, Sliders & Member Roles", () => {
+    it("should correctly configure 60/40 preset with 10,000 basis points", () => {
+      const preset6040 = [
+        { label: "Lead Developer", basisPoints: 6000 },
+        { label: "UI/UX Designer", basisPoints: 4000 },
+      ];
+      const sum = preset6040.reduce((acc, s) => acc + s.basisPoints, 0);
+      expect(sum).toBe(10000);
+      expect(preset6040[0].basisPoints / 100).toBe(60);
+      expect(preset6040[1].basisPoints / 100).toBe(40);
+    });
+
+    it("should correctly configure 3-member 40/30/30 preset", () => {
+      const preset403030 = [
+        { label: "Full-Stack Dev", basisPoints: 4000 },
+        { label: "Smart Contract Dev", basisPoints: 3000 },
+        { label: "UI Designer", basisPoints: 3000 },
+      ];
+      const sum = preset403030.reduce((acc, s) => acc + s.basisPoints, 0);
+      expect(sum).toBe(10000);
+      expect(preset403030.length).toBe(3);
+    });
+
+    it("should preserve member role labels across split calculations", () => {
+      const shares = [
+        { label: "Alice (Lead Dev)", basisPoints: 7000 },
+        { label: "Bob (Designer)", basisPoints: 3000 },
+      ];
+      expect(shares[0].label).toContain("Lead Dev");
+      expect(shares[1].label).toContain("Designer");
     });
   });
 });

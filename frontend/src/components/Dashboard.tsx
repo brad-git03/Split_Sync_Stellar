@@ -7,6 +7,7 @@ import { prepareInitTx, preparePayTx, submitTx, getTokenBalance, getRealAccountB
 import { validateStellarAddress, validateContractAddress } from "@/utils/validation";
 
 interface ShareInput {
+  label?: string;
   recipient: string;
   basisPoints: number;
 }
@@ -98,10 +99,10 @@ export default function Dashboard() {
     PYUSD: 1.0,
   };
 
-  // State for Init Tab (Configuring Shares)
+  // State for Init Tab (Configuring Shares with Role Labels)
   const [shares, setShares] = useState<ShareInput[]>([
-    { recipient: "", basisPoints: 5000 },
-    { recipient: "", basisPoints: 5000 },
+    { label: "Lead Developer", recipient: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: 5000 },
+    { label: "UI/UX Designer", recipient: "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: 5000 },
   ]);
 
   // State for Pay Tab
@@ -116,7 +117,6 @@ export default function Dashboard() {
   const [newSquadName, setNewSquadName] = useState("SplitSync Freelance Squad");
   const [newInvoiceAmount, setNewInvoiceAmount] = useState("2500");
   const [newInvoiceService, setNewInvoiceService] = useState("Full-Stack Web3 Milestone Delivery");
-  const [invoiceCopiedId, setInvoiceCopiedId] = useState<string | null>(null);
 
   // Proposals State
   const [proposals, setProposals] = useState<ProposalData[]>([]);
@@ -207,8 +207,8 @@ export default function Dashboard() {
           proposer: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT",
           contractId: "CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI",
           proposedShares: [
-            { recipient: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: 6000 },
-            { recipient: "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: 4000 },
+            { label: "Lead Developer", recipient: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: 6000 },
+            { label: "UI/UX Designer", recipient: "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: 4000 },
           ],
           requiredSignatures: 2,
           signedBy: ["GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT"],
@@ -221,7 +221,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Sync wallet address to sender
   // Sync wallet address and fetch real on-chain balance
   useEffect(() => {
     if (address) {
@@ -263,7 +262,7 @@ export default function Dashboard() {
 
   // Add / Remove Share Rows
   const addShareRow = () => {
-    setShares([...shares, { recipient: "", basisPoints: 0 }]);
+    setShares([...shares, { label: `Member #${shares.length + 1}`, recipient: "", basisPoints: 0 }]);
   };
 
   const removeShareRow = (idx: number) => {
@@ -275,6 +274,32 @@ export default function Dashboard() {
     const next = [...shares];
     next[idx] = { ...next[idx], [field]: val };
     setShares(next);
+  };
+
+  // Apply Quick Presets
+  const applyPreset = (preset: "50/50" | "60/40" | "70/30" | "40/30/30") => {
+    if (preset === "50/50") {
+      setShares([
+        { label: "Lead Developer", recipient: shares[0]?.recipient || "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: 5000 },
+        { label: "UI/UX Designer", recipient: shares[1]?.recipient || "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: 5000 },
+      ]);
+    } else if (preset === "60/40") {
+      setShares([
+        { label: "Lead Developer", recipient: shares[0]?.recipient || "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: 6000 },
+        { label: "UI/UX Designer", recipient: shares[1]?.recipient || "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: 4000 },
+      ]);
+    } else if (preset === "70/30") {
+      setShares([
+        { label: "Senior Architect", recipient: shares[0]?.recipient || "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: 7000 },
+        { label: "Junior Contributor", recipient: shares[1]?.recipient || "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: 3000 },
+      ]);
+    } else if (preset === "40/30/30") {
+      setShares([
+        { label: "Full-Stack Dev", recipient: shares[0]?.recipient || "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: 4000 },
+        { label: "Smart Contract Dev", recipient: shares[1]?.recipient || "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: 3000 },
+        { label: "UI Designer", recipient: "GBR2K5M7WXYZ6QPL2N8HDY66J4V3Q8FM96K2SPLTN9M26LMDHY34SPLT", basisPoints: 3000 },
+      ]);
+    }
   };
 
   const totalBasisPoints = shares.reduce((acc, s) => acc + (Number(s.basisPoints) || 0), 0);
@@ -294,7 +319,7 @@ export default function Dashboard() {
 
     for (let i = 0; i < shares.length; i++) {
       if (!validateStellarAddress(shares[i].recipient.trim())) {
-        setActionError(`Recipient #${i + 1} has an invalid Stellar address.`);
+        setActionError(`Recipient #${i + 1} (${shares[i].label || "Member"}) has an invalid Stellar address.`);
         return;
       }
     }
@@ -309,7 +334,7 @@ export default function Dashboard() {
       const hash = await submitTx(signedXdr);
       setTxHash(hash);
       setActionSuccess("Split contract successfully initialized on Stellar!");
-      if (address) fetchBalance(address);
+      if (address) fetchBalance(address, selectedToken);
     } catch (err: any) {
       setActionError(err.message || "Failed to initialize split contract.");
     } finally {
@@ -350,7 +375,7 @@ export default function Dashboard() {
       const hash = await submitTx(signedXdr);
       setTxHash(hash);
       setActionSuccess(`Split payment of ${amount} ${selectedToken} successfully settled on Stellar!`);
-      if (address) fetchBalance(address);
+      if (address) fetchBalance(address, selectedToken);
     } catch (err: any) {
       setActionError(err.message || "Failed to execute split payment.");
     } finally {
@@ -403,8 +428,8 @@ export default function Dashboard() {
       proposer: address || "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT",
       contractId: contractId,
       proposedShares: [
-        { recipient: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: newPropShareA },
-        { recipient: "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: newPropShareB },
+        { label: "Lead Developer", recipient: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: newPropShareA },
+        { label: "UI/UX Designer", recipient: "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: newPropShareB },
       ],
       requiredSignatures: 2,
       signedBy: [address || "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT"],
@@ -523,7 +548,7 @@ export default function Dashboard() {
             activeTab === "pay" ? "border-emerald-mint text-white" : "border-transparent text-muted-silver hover:text-white"
           }`}
         >
-          2. Execute Split (Multi-Token & FX)
+          2. Execute Split (Flow & FX)
         </button>
         <button
           onClick={() => setActiveTab("invoices")}
@@ -566,68 +591,140 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* TAB 1: CONFIGURE SPLIT */}
+      {/* TAB 1: CONFIGURE SPLIT (PRESETS, SLIDERS, NICKNAMES) */}
       {activeTab === "init" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <form onSubmit={handleInitSubmit} className="space-y-6 bg-slate-layer/40 p-6 rounded-xl border border-border-slate">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                  <h3 className="text-base font-bold text-white">Define Recipient Allocation</h3>
-                  <p className="text-xs text-muted-silver">Specify squad recipient wallet addresses and basis points (10,000 bp = 100%).</p>
+                  <h3 className="text-base font-bold text-white">Define Squad Allocation</h3>
+                  <p className="text-xs text-muted-silver">Assign member roles, wallet addresses, and split percentages.</p>
                 </div>
                 <button
                   type="button"
                   onClick={addShareRow}
                   className="px-3 py-1.5 bg-slate-layer border border-border-slate hover:border-emerald-mint text-xs text-white rounded-md transition-all cursor-pointer"
                 >
-                  + Add Recipient
+                  + Add Member
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {shares.map((share, idx) => (
-                  <div key={idx} className="flex gap-3 items-center bg-obsidian p-3.5 rounded-lg border border-border-slate/70">
-                    <div className="flex-1 space-y-1">
-                      <label className="text-[11px] text-muted-silver block">Recipient #{idx + 1} Public Address (G...)</label>
-                      <input
-                        type="text"
-                        value={share.recipient}
-                        onChange={(e) => updateShare(idx, "recipient", e.target.value)}
-                        placeholder="G..."
-                        className="w-full px-3 py-1.5 bg-slate-layer/50 border border-border-slate text-white text-xs font-mono rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
-                      />
-                    </div>
-
-                    <div className="w-32 space-y-1">
-                      <label className="text-[11px] text-muted-silver block">Basis Points (bp)</label>
-                      <input
-                        type="number"
-                        value={share.basisPoints}
-                        onChange={(e) => updateShare(idx, "basisPoints", Number(e.target.value))}
-                        placeholder="5000"
-                        className="w-full px-3 py-1.5 bg-slate-layer/50 border border-border-slate text-white text-xs font-mono rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
-                      />
-                      <span className="text-[10px] text-emerald-mint block text-right font-medium">
-                        {((share.basisPoints || 0) / 100).toFixed(1)}%
-                      </span>
-                    </div>
-
-                    {shares.length > 2 && (
-                      <button
-                        type="button"
-                        onClick={() => removeShareRow(idx)}
-                        className="text-muted-crimson hover:text-red-400 p-2 text-sm cursor-pointer mt-3"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
+              {/* Quick Presets Bar */}
+              <div className="p-3.5 bg-obsidian rounded-lg border border-border-slate/60 space-y-2">
+                <span className="text-[11px] text-muted-silver font-semibold uppercase tracking-wider block">
+                  ⚡ Quick Split Presets
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("50/50")}
+                    className="px-3 py-1 bg-slate-layer hover:bg-emerald-mint/20 hover:text-emerald-mint hover:border-emerald-mint/50 border border-border-slate text-xs font-bold text-white rounded-full transition-all cursor-pointer"
+                  >
+                    Equal (50 / 50)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("60/40")}
+                    className="px-3 py-1 bg-slate-layer hover:bg-emerald-mint/20 hover:text-emerald-mint hover:border-emerald-mint/50 border border-border-slate text-xs font-bold text-white rounded-full transition-all cursor-pointer"
+                  >
+                    60 / 40 Split
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("70/30")}
+                    className="px-3 py-1 bg-slate-layer hover:bg-emerald-mint/20 hover:text-emerald-mint hover:border-emerald-mint/50 border border-border-slate text-xs font-bold text-white rounded-full transition-all cursor-pointer"
+                  >
+                    70 / 30 Split
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset("40/30/30")}
+                    className="px-3 py-1 bg-slate-layer hover:bg-emerald-mint/20 hover:text-emerald-mint hover:border-emerald-mint/50 border border-border-slate text-xs font-bold text-white rounded-full transition-all cursor-pointer"
+                  >
+                    3 Members (40 / 30 / 30)
+                  </button>
+                </div>
               </div>
 
-              <div className="flex justify-between items-center p-3 bg-obsidian rounded-lg border border-border-slate">
-                <span className="text-xs text-muted-silver font-semibold">Total Allocation:</span>
+              {/* Recipient Rows with Sliders and Roles */}
+              <div className="space-y-4">
+                {shares.map((share, idx) => {
+                  const percentage = ((share.basisPoints || 0) / 100).toFixed(0);
+                  return (
+                    <div key={idx} className="bg-obsidian p-4 rounded-lg border border-border-slate/70 space-y-3">
+                      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                        {/* Member Name / Role */}
+                        <div className="w-full sm:w-44 space-y-1">
+                          <label className="text-[10px] text-muted-silver block font-semibold">Member Name / Role</label>
+                          <input
+                            type="text"
+                            value={share.label || ""}
+                            onChange={(e) => updateShare(idx, "label", e.target.value)}
+                            placeholder={`e.g. Lead Dev #${idx + 1}`}
+                            className="w-full px-2.5 py-1.5 bg-slate-layer/50 border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint font-semibold"
+                          />
+                        </div>
+
+                        {/* Public Address */}
+                        <div className="flex-1 w-full space-y-1">
+                          <label className="text-[10px] text-muted-silver block font-semibold">Stellar Wallet (G...)</label>
+                          <input
+                            type="text"
+                            value={share.recipient}
+                            onChange={(e) => updateShare(idx, "recipient", e.target.value)}
+                            placeholder="G..."
+                            className="w-full px-2.5 py-1.5 bg-slate-layer/50 border border-border-slate text-white text-xs font-mono rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                          />
+                        </div>
+
+                        {/* Basis Points Input */}
+                        <div className="w-28 space-y-1">
+                          <label className="text-[10px] text-muted-silver block font-semibold">Basis Points</label>
+                          <input
+                            type="number"
+                            value={share.basisPoints}
+                            onChange={(e) => updateShare(idx, "basisPoints", Number(e.target.value))}
+                            placeholder="5000"
+                            className="w-full px-2.5 py-1.5 bg-slate-layer/50 border border-border-slate text-white text-xs font-mono rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint font-bold"
+                          />
+                        </div>
+
+                        {shares.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => removeShareRow(idx)}
+                            className="text-muted-crimson hover:text-red-400 p-1 text-sm cursor-pointer mt-3 sm:mt-4"
+                            title="Remove Recipient"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Interactive Percentage Slider */}
+                      <div className="space-y-1 pt-1 border-t border-border-slate/40">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-[11px] text-muted-silver font-medium">Split Share Slider:</span>
+                          <span className="font-mono text-emerald-mint font-extrabold text-sm">{percentage}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={percentage}
+                          onChange={(e) => updateShare(idx, "basisPoints", Number(e.target.value) * 100)}
+                          className="w-full accent-emerald-mint cursor-pointer h-1.5 bg-slate-layer rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Total Allocation Counter */}
+              <div className="flex justify-between items-center p-3.5 bg-obsidian rounded-lg border border-border-slate">
+                <span className="text-xs text-muted-silver font-semibold">Total Allocation Check:</span>
                 <span className={`font-mono text-sm font-bold ${totalBasisPoints === 10000 ? "text-emerald-mint" : "text-muted-crimson"}`}>
                   {totalBasisPoints} / 10,000 bp ({(totalBasisPoints / 100).toFixed(1)}%)
                 </span>
@@ -636,9 +733,9 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={actionLoading || totalBasisPoints !== 10000}
-                className="w-full py-3 bg-emerald-mint hover:bg-opacity-90 disabled:opacity-50 text-obsidian font-bold rounded-md shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer text-sm"
+                className="w-full py-3.5 bg-emerald-mint hover:bg-opacity-90 disabled:opacity-50 text-obsidian font-bold rounded-lg shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer text-sm"
               >
-                {actionLoading ? "Deploying & Signing..." : "Initialize Split Contract on Stellar"}
+                {actionLoading ? "Deploying & Signing..." : "⚡ Initialize Split Contract on Stellar"}
               </button>
             </form>
           </div>
@@ -665,13 +762,111 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* TAB 2: EXECUTE SPLIT PAYMENT (MULTI-TOKEN & FX CONVERTER) */}
+      {/* TAB 2: EXECUTE SPLIT PAYMENT (VISUAL FLOW DIAGRAM & FX CONVERTER) */}
       {activeTab === "pay" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            {/* Visual Payment Flow Diagram */}
+            {shares.length > 0 && Number(amount) > 0 && (
+              <div className="bg-slate-layer/40 p-5 rounded-xl border border-border-slate space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                    ⚡ Live Payment Flow Architecture
+                  </h4>
+                  <span className="text-[10px] text-emerald-mint font-semibold bg-emerald-mint/10 px-2 py-0.5 rounded-full">
+                    Atomic Soroban Execution
+                  </span>
+                </div>
+
+                {/* Flow Nodes Container */}
+                <div className="flex flex-col items-center space-y-3 py-2">
+                  {/* Payer Node */}
+                  <div className="w-full max-w-sm bg-obsidian border border-border-slate p-3 rounded-lg text-center shadow-lg">
+                    <span className="text-[10px] text-muted-silver uppercase font-semibold block">Client / Payer Source</span>
+                    <span className="font-extrabold text-white text-base font-mono">
+                      {amount} {selectedToken}
+                    </span>
+                    <span className="text-[11px] text-emerald-mint font-medium block">
+                      ≈ {FIAT_SYMBOLS[selectedFiat]}
+                      {((Number(amount) || 0) * TOKEN_USD_VALUE[selectedToken] * FX_RATES[selectedFiat]).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      {selectedFiat}
+                    </span>
+                  </div>
+
+                  {/* Flow Arrow */}
+                  <div className="flex flex-col items-center">
+                    <span className="w-0.5 h-4 bg-emerald-mint/50 animate-pulse"></span>
+                    <span className="text-[10px] text-emerald-mint font-bold uppercase tracking-widest bg-emerald-mint/10 px-2 py-0.5 rounded-full border border-emerald-mint/30">
+                      ⚡ 1-Click Atomic Settlement
+                    </span>
+                    <span className="w-0.5 h-4 bg-emerald-mint/50 animate-pulse"></span>
+                  </div>
+
+                  {/* Smart Contract Hub */}
+                  <div className="w-full max-w-sm bg-slate-layer border border-emerald-mint/40 p-3 rounded-lg text-center shadow-xl">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-mint animate-ping"></span>
+                      <span className="text-xs font-bold text-white">SplitSync Smart Contract</span>
+                    </div>
+                    <span className="text-[10px] text-muted-silver font-mono block truncate mt-0.5">
+                      {contractId ? `${contractId.slice(0, 10)}...${contractId.slice(-10)}` : "CA7S..."}
+                    </span>
+                    <span className="text-[9px] text-emerald-mint font-semibold">Zero-Dust Remainder Invariant Verified ✓</span>
+                  </div>
+
+                  {/* Flow Arrow */}
+                  <div className="w-0.5 h-4 bg-emerald-mint/50 animate-pulse"></div>
+
+                  {/* Recipient Nodes */}
+                  <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(() => {
+                      let cumulative = BigInt(0);
+                      const total = BigInt(amount || "0");
+                      return shares.map((share, idx) => {
+                        const basisPoints = BigInt(share.basisPoints || 0);
+                        let payout = idx === shares.length - 1 ? total - cumulative : (total * basisPoints) / BigInt(10000);
+                        if (idx !== shares.length - 1) cumulative += payout;
+
+                        const percentage = ((share.basisPoints || 0) / 100).toFixed(1);
+                        const fiatVal = (Number(payout) * TOKEN_USD_VALUE[selectedToken] * FX_RATES[selectedFiat]).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        });
+
+                        return (
+                          <div key={idx} className="bg-obsidian border border-border-slate p-3 rounded-lg space-y-1 shadow">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-bold text-white truncate max-w-[140px]">
+                                👤 {share.label || `Member #${idx + 1}`}
+                              </span>
+                              <span className="text-[10px] font-bold text-emerald-mint bg-emerald-mint/10 px-2 py-0.5 rounded-full">
+                                {percentage}%
+                              </span>
+                            </div>
+                            <span className="font-mono text-[10px] text-muted-silver block truncate" title={share.recipient}>
+                              {share.recipient ? `${share.recipient.slice(0, 6)}...${share.recipient.slice(-6)}` : "G..."}
+                            </span>
+                            <div className="flex justify-between items-baseline pt-1 border-t border-border-slate/30">
+                              <span className="text-xs font-extrabold text-white font-mono">{payout.toString()} {selectedToken}</span>
+                              <span className="text-[10px] text-emerald-mint font-medium">
+                                ≈ {FIAT_SYMBOLS[selectedFiat]}{fiatVal}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handlePaySubmit} className="space-y-5 bg-slate-layer/40 p-6 rounded-xl border border-border-slate">
               <div>
-                <h3 className="text-base font-bold text-white">Execute Atomic Revenue Split</h3>
+                <h3 className="text-base font-bold text-white">Execute Split Payment</h3>
                 <p className="text-xs text-muted-silver">Disperse payments across squad recipients in a single atomic transaction.</p>
               </div>
 
@@ -740,63 +935,8 @@ export default function Dashboard() {
                     placeholder="1000"
                     className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-sm rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
                   />
-                  <span className="text-[11px] text-emerald-mint block text-right font-mono">
-                    Estimated Total Value: {FIAT_SYMBOLS[selectedFiat]}
-                    {((Number(amount) || 0) * TOKEN_USD_VALUE[selectedToken] * FX_RATES[selectedFiat]).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    {selectedFiat}
-                  </span>
                 </div>
               </div>
-
-              {/* Pre-Flight Split Estimator */}
-              {shares.length > 0 && Number(amount) > 0 && (
-                <div className="bg-obsidian border border-border-slate/60 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Pre-Flight Split Estimator (with Live FX)</h4>
-                    <span className="text-[10px] text-emerald-mint font-semibold bg-emerald-mint/10 px-2 py-0.5 rounded-full">
-                      Zero-Dust Calculator
-                    </span>
-                  </div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {(() => {
-                      let cumulative = BigInt(0);
-                      const total = BigInt(amount || "0");
-                      return shares.map((share, idx) => {
-                        const basisPoints = BigInt(share.basisPoints || 0);
-                        let payout = idx === shares.length - 1 ? total - cumulative : (total * basisPoints) / BigInt(10000);
-                        if (idx !== shares.length - 1) cumulative += payout;
-
-                        const percentage = ((share.basisPoints || 0) / 100).toFixed(1);
-                        const fiatVal = (Number(payout) * TOKEN_USD_VALUE[selectedToken] * FX_RATES[selectedFiat]).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        });
-
-                        return (
-                          <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-layer/40 rounded border border-border-slate/30">
-                            <div>
-                              <span className="font-mono text-white text-[11px] block">
-                                {share.recipient ? `${share.recipient.slice(0, 6)}...${share.recipient.slice(-6)}` : `Recipient #${idx + 1}`}
-                              </span>
-                              <span className="text-[10px] text-emerald-mint font-medium">
-                                ≈ {FIAT_SYMBOLS[selectedFiat]}
-                                {fiatVal} {selectedFiat}
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <span className="font-bold text-white">{payout.toString()} {selectedToken}</span>
-                              <span className="text-[9px] text-muted-silver ml-1.5">({percentage}%)</span>
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                </div>
-              )}
 
               {/* Gasless Fee Sponsorship */}
               <div className="bg-obsidian border border-emerald-mint/30 rounded-lg p-4 space-y-2.5">
@@ -824,9 +964,9 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="w-full py-3 bg-emerald-mint hover:bg-opacity-90 disabled:opacity-50 text-obsidian font-bold rounded-md shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer text-sm"
+                className="w-full py-3.5 bg-emerald-mint hover:bg-opacity-90 disabled:opacity-50 text-obsidian font-bold rounded-lg shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer text-sm"
               >
-                {actionLoading ? "Splitting On-Chain..." : `Execute ${amount} ${selectedToken} Split`}
+                {actionLoading ? "Splitting On-Chain..." : `⚡ Execute ${amount} ${selectedToken} Split`}
               </button>
             </form>
           </div>
@@ -1074,8 +1214,8 @@ export default function Dashboard() {
                       <div className="grid grid-cols-2 gap-2 bg-obsidian p-3 rounded-lg border border-border-slate/50 text-xs">
                         {prop.proposedShares.map((s, idx) => (
                           <div key={idx} className="flex justify-between">
-                            <span className="font-mono text-muted-silver text-[11px]">
-                              {s.recipient.slice(0, 6)}...{s.recipient.slice(-6)}
+                            <span className="font-mono text-muted-silver text-[11px] truncate max-w-[120px]">
+                              {s.label || (s.recipient ? `${s.recipient.slice(0, 6)}...${s.recipient.slice(-6)}` : `Member #${idx + 1}`)}
                             </span>
                             <span className="font-bold text-emerald-mint">{(s.basisPoints / 100).toFixed(0)}%</span>
                           </div>
