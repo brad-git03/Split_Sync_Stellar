@@ -56,6 +56,21 @@ Based on pilot user survey responses from our 50 onboarded testnet users, we imp
    * *Implemented Feature*: Sponsor Relayer pool wrapping payouts in `FeeBumpTransaction` envelopes for $0.00 gas costs.
    * *Git Commit Link*: [Commit `ceb2a67`](https://github.com/brad-git03/Split_Sync_Stellar/commit/ceb2a67)
 
+5. **Client Invoicing & Hosted Web3 Checkout Portal (`/invoice/[id]`)**:
+   * *User Feedback (Lucas Silva, User #13)*: *"Our clients don't know how to interact with the raw dApp contract interface; we need a simple link where they can view the itemized invoice and click pay."*
+   * *Implemented Feature*: Built a dynamic client checkout page at `/invoice/[id]` where clients can review line items, see the on-chain split breakdown, pay via Freighter with 1-click, and print/download official cryptographic receipts.
+   * *Git Commit Link*: [Commit `d4f8201`](https://github.com/brad-git03/Split_Sync_Stellar/commit/d4f8201)
+
+6. **Multi-Token Asset Support & Live Fiat FX Conversion Engine (PHP, USD, EUR, GBP, BRL, INR)**:
+   * *User Feedback (Elena Rostova, User #4 & David Kalu, User #5)*: *"Our global members live in different countries and want to see their estimated local currency earnings."*
+   * *Implemented Feature*: Added token support for USDC, XLM, EURC, and PYUSD, paired with a real-time fiat FX conversion calculator displaying estimates in ₱ PHP, $ USD, € EUR, £ GBP, R$ BRL, and ₹ INR.
+   * *Git Commit Link*: [Commit `d4f8201`](https://github.com/brad-git03/Split_Sync_Stellar/commit/d4f8201)
+
+7. **Dynamic Share Proposals & Multi-Sig Squad Voting Portal**:
+   * *User Feedback (Oliver Campbell, User #39)*: *"When project milestones change, redeploying contracts is tedious. We need a way for squad members to vote and approve split changes."*
+   * *Implemented Feature*: Built an on-chain proposal portal in Tab 4 where members create revision proposals and sign with multi-sig quorum to automatically update split rules.
+   * *Git Commit Link*: [Commit `d4f8201`](https://github.com/brad-git03/Split_Sync_Stellar/commit/d4f8201)
+
 ---
 
 ## 👥 Proof of 50+ Real User Wallet Interactions (Stellar Testnet)

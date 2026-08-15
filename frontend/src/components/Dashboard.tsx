@@ -1,13 +1,47 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useStellarWallet } from "@/hooks/useStellarWallet";
-import { prepareInitTx, preparePayTx, submitTx, getTokenBalance, formatTokenAmount } from "@/utils/soroban";
+import { prepareInitTx, preparePayTx, submitTx, getTokenBalance, formatTokenAmount, CONTRACT_ID } from "@/utils/soroban";
 import { validateStellarAddress, validateContractAddress } from "@/utils/validation";
 
 interface ShareInput {
   recipient: string;
   basisPoints: number;
+}
+
+interface InvoiceItem {
+  description: string;
+  amount: number;
+}
+
+interface InvoiceData {
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  squadName: string;
+  contractId: string;
+  token: string;
+  items: InvoiceItem[];
+  totalAmount: number;
+  dueDate: string;
+  createdAt: string;
+  status: "pending" | "paid";
+  txHash?: string;
+}
+
+interface ProposalData {
+  id: string;
+  title: string;
+  description: string;
+  proposer: string;
+  contractId: string;
+  proposedShares: ShareInput[];
+  requiredSignatures: number;
+  signedBy: string[];
+  status: "active" | "executed";
+  createdAt: string;
 }
 
 export default function Dashboard() {
@@ -22,7 +56,7 @@ export default function Dashboard() {
   } = useStellarWallet();
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"init" | "pay" | "admin">("init");
+  const [activeTab, setActiveTab] = useState<"init" | "pay" | "invoices" | "proposals" | "admin">("init");
 
   // Admin Tab State
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
@@ -31,13 +65,182 @@ export default function Dashboard() {
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
 
-  // Check stored admin auth on mount
+  // Fee Sponsorship (Gasless Transaction) State
+  const [isFeeSponsored, setIsFeeSponsored] = useState<boolean>(true);
+  const sponsorAddress = "GCCY5TQ262GIYZDRRYENCSWUJXT3THBQQ42RINCESXTYZMGTL2NJM4SE";
+
+  // Multi-Token & Fiat FX Converter State
+  const [selectedToken, setSelectedToken] = useState<"USDC" | "XLM" | "EURC" | "PYUSD">("USDC");
+  const [selectedFiat, setSelectedFiat] = useState<"USD" | "PHP" | "EUR" | "GBP" | "BRL" | "INR">("PHP");
+
+  const FX_RATES: Record<string, number> = {
+    USD: 1.0,
+    PHP: 58.5,
+    EUR: 0.92,
+    GBP: 0.78,
+    BRL: 5.65,
+    INR: 83.9,
+  };
+
+  const FIAT_SYMBOLS: Record<string, string> = {
+    USD: "$",
+    PHP: "₱",
+    EUR: "€",
+    GBP: "£",
+    BRL: "R$",
+    INR: "₹",
+  };
+
+  const TOKEN_USD_VALUE: Record<string, number> = {
+    USDC: 1.0,
+    XLM: 0.12,
+    EURC: 1.08,
+    PYUSD: 1.0,
+  };
+
+  // State for Init Tab (Configuring Shares)
+  const [shares, setShares] = useState<ShareInput[]>([
+    { recipient: "", basisPoints: 5000 },
+    { recipient: "", basisPoints: 5000 },
+  ]);
+
+  // State for Pay Tab
+  const [contractId, setContractId] = useState<string>("CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI");
+  const [senderAddress, setSenderAddress] = useState<string>("");
+  const [amount, setAmount] = useState<string>("1000");
+
+  // Invoices State
+  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [newSquadName, setNewSquadName] = useState("SplitSync Freelance Squad");
+  const [newInvoiceAmount, setNewInvoiceAmount] = useState("2500");
+  const [newInvoiceService, setNewInvoiceService] = useState("Full-Stack Web3 Milestone Delivery");
+  const [invoiceCopiedId, setInvoiceCopiedId] = useState<string | null>(null);
+
+  // Proposals State
+  const [proposals, setProposals] = useState<ProposalData[]>([]);
+  const [newProposalTitle, setNewProposalTitle] = useState("");
+  const [newProposalDesc, setNewProposalDesc] = useState("");
+  const [newPropShareA, setNewPropShareA] = useState(6000);
+  const [newPropShareB, setNewPropShareB] = useState(4000);
+
+  // Execution & Diagnostics
+  const [rawXdr, setRawXdr] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [tokenBalance, setTokenBalance] = useState<string | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Initial Load from LocalStorage
   useEffect(() => {
     const storedAuth = localStorage.getItem("splitsync_admin_auth");
     if (storedAuth === "true") {
       setIsAdminAuthenticated(true);
     }
+
+    // Load Invoices
+    const savedInvoices = localStorage.getItem("splitsync_invoices");
+    if (savedInvoices) {
+      try {
+        setInvoices(JSON.parse(savedInvoices));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      const defaultInvoices: InvoiceData[] = [
+        {
+          id: "INV-2026-001",
+          clientName: "Solaris DAO Ventures",
+          clientEmail: "finance@solarisdao.org",
+          squadName: "Apex Web3 Engineering Collective",
+          contractId: "CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI",
+          token: "USDC",
+          items: [
+            { description: "Soroban Smart Contract Architecture & Security Review", amount: 2500 },
+            { description: "Next.js 16 Web3 Frontend & Freighter Wallet Integration", amount: 1500 },
+            { description: "Automated Zero-Dust Revenue Splitter Deployment", amount: 800 },
+          ],
+          totalAmount: 4800,
+          dueDate: "2026-08-30",
+          createdAt: "2026-08-14",
+          status: "paid",
+          txHash: "e1fea6a9a7a4f93e97098750f9c3d44b993ec5d5c53db22b4165178017145652",
+        },
+        {
+          id: "INV-2026-002",
+          clientName: "Hyperion Digital Studio",
+          clientEmail: "payments@hyperionstudio.io",
+          squadName: "SplitSync Creator Guild",
+          contractId: "CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI",
+          token: "USDC",
+          items: [
+            { description: "Brand Identity, 3D Assets & Launch Thread Collateral", amount: 1800 },
+            { description: "Pre-flight Split Estimator & Trustline Health Integration", amount: 1400 },
+          ],
+          totalAmount: 3200,
+          dueDate: "2026-09-05",
+          createdAt: "2026-08-15",
+          status: "pending",
+        },
+      ];
+      setInvoices(defaultInvoices);
+      localStorage.setItem("splitsync_invoices", JSON.stringify(defaultInvoices));
+    }
+
+    // Load Proposals
+    const savedProposals = localStorage.getItem("splitsync_proposals");
+    if (savedProposals) {
+      try {
+        setProposals(JSON.parse(savedProposals));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      const defaultProposals: ProposalData[] = [
+        {
+          id: "PROP-001",
+          title: "Sprint 4 Share Adjustment: Increase Frontend Allocation to 60%",
+          description: "Adjusting split basis points from 50/50 to 60/40 due to extensive Next.js 16 and Fee Sponsorship integrations.",
+          proposer: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT",
+          contractId: "CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI",
+          proposedShares: [
+            { recipient: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: 6000 },
+            { recipient: "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: 4000 },
+          ],
+          requiredSignatures: 2,
+          signedBy: ["GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT"],
+          status: "active",
+          createdAt: "2026-08-15",
+        },
+      ];
+      setProposals(defaultProposals);
+      localStorage.setItem("splitsync_proposals", JSON.stringify(defaultProposals));
+    }
   }, []);
+
+  // Sync wallet address to sender
+  useEffect(() => {
+    if (address) {
+      setSenderAddress(address);
+      fetchBalance(address);
+    }
+  }, [address]);
+
+  const fetchBalance = async (targetAddr: string) => {
+    setBalanceLoading(true);
+    try {
+      const bal = await getTokenBalance(CONTRACT_ID, targetAddr);
+      setTokenBalance(bal || "0");
+    } catch (e) {
+      console.error(e);
+      setTokenBalance(null);
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,187 +260,201 @@ export default function Dashboard() {
     localStorage.removeItem("splitsync_admin_auth");
   };
 
-  // Fee Sponsorship (Gasless Transaction) State
-  const [isFeeSponsored, setIsFeeSponsored] = useState<boolean>(true);
-  const sponsorAddress = "GCCY5TQ262GIYZDRRYENCSWUJXT3THBQQ42RINCESXTYZMGTL2NJM4SE";
-
-  // State for Init Tab (Configuring Shares)
-  const [shares, setShares] = useState<ShareInput[]>([
-    { recipient: "", basisPoints: 5000 },
-    { recipient: "", basisPoints: 5000 },
-  ]);
-  const [initTxXdr, setInitTxXdr] = useState<string | null>(null);
-  const [initSignedXdr, setInitSignedXdr] = useState<string | null>(null);
-  const [initTxHash, setInitTxHash] = useState<string | null>(null);
-  const [initLoading, setInitLoading] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
-
-  // State for Pay Tab
-  const [tokenAddress, setTokenAddress] = useState("CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA"); // Valid Testnet USDC/SAC Address
-  const [senderAddress, setSenderAddress] = useState("");
-  const [amount, setAmount] = useState("1000"); // 1000 base units (stroops)
-  const [payTxXdr, setPayTxXdr] = useState<string | null>(null);
-  const [paySignedXdr, setPaySignedXdr] = useState<string | null>(null);
-  const [payTxHash, setPayTxHash] = useState<string | null>(null);
-  const [payLoading, setPayLoading] = useState(false);
-  const [payError, setPayError] = useState<string | null>(null);
-
-  // Success Modal States
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successTxHash, setSuccessTxHash] = useState<string | null>(null);
-  const [successAmount, setSuccessAmount] = useState<string | null>(null);
-  const [successShares, setSuccessShares] = useState<ShareInput[]>([]);
-
-  // Pre-fill sender address when wallet connects
-  useEffect(() => {
-    if (address) {
-      setSenderAddress(address);
-    }
-  }, [address]);
-
-  // Validation for Init Tab
-  const totalBasisPoints = shares.reduce((acc, curr) => acc + (curr.basisPoints || 0), 0);
-  const isBasisPointsValid = totalBasisPoints === 10000;
-  // Balance state
-  const [tokenBalance, setTokenBalance] = useState<string | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(false);
-
-  // Fetch token balance via read-only simulation
-  const fetchBalance = async () => {
-    if (!address || !tokenAddress || !validateContractAddress(tokenAddress)) {
-      setTokenBalance(null);
-      return;
-    }
-    setBalanceLoading(true);
-    try {
-      const bal = await getTokenBalance(tokenAddress, address);
-      setTokenBalance(bal);
-    } catch (err) {
-      console.error(err);
-      setTokenBalance("0");
-    } finally {
-      setBalanceLoading(false);
-    }
-  };
-
-  // Fetch balance when wallet connects, token address changes, or after transaction submits
-  useEffect(() => {
-    fetchBalance();
-  }, [address, tokenAddress, payTxHash]);
-
-  const isInitFormValid =
-    isBasisPointsValid &&
-    shares.length > 0 &&
-    shares.every((s) => validateStellarAddress(s.recipient) && s.basisPoints > 0);
-
-  const isPayFormValid =
-    validateContractAddress(tokenAddress) &&
-    validateStellarAddress(senderAddress) &&
-    Number(amount) > 0;
-
-  // Add/Remove share rows
+  // Add / Remove Share Rows
   const addShareRow = () => {
     setShares([...shares, { recipient: "", basisPoints: 0 }]);
   };
 
-  const removeShareRow = (index: number) => {
-    const newShares = [...shares];
-    newShares.splice(index, 1);
-    setShares(newShares);
+  const removeShareRow = (idx: number) => {
+    if (shares.length <= 2) return;
+    setShares(shares.filter((_, i) => i !== idx));
   };
 
-  const updateShareRow = (index: number, field: keyof ShareInput, value: string | number) => {
-    const newShares = [...shares];
-    if (field === "basisPoints") {
-      newShares[index].basisPoints = Math.max(0, Number(value));
-    } else {
-      newShares[index].recipient = String(value);
+  const updateShare = (idx: number, field: keyof ShareInput, val: any) => {
+    const next = [...shares];
+    next[idx] = { ...next[idx], [field]: val };
+    setShares(next);
+  };
+
+  const totalBasisPoints = shares.reduce((acc, s) => acc + (Number(s.basisPoints) || 0), 0);
+
+  // Initialize Contract
+  const handleInitSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionError(null);
+    setActionSuccess(null);
+    setRawXdr(null);
+    setTxHash(null);
+
+    if (totalBasisPoints !== 10000) {
+      setActionError(`Total basis points must equal exactly 10,000 (100%). Currently: ${totalBasisPoints}`);
+      return;
     }
-    setShares(newShares);
-  };
 
-  // Actions
-  const handleConfigureSplit = async () => {
-    if (!address) return;
-    setInitLoading(true);
-    setInitError(null);
-    setInitTxXdr(null);
-    setInitSignedXdr(null);
-    setInitTxHash(null);
+    for (let i = 0; i < shares.length; i++) {
+      if (!validateStellarAddress(shares[i].recipient.trim())) {
+        setActionError(`Recipient #${i + 1} has an invalid Stellar address.`);
+        return;
+      }
+    }
 
     try {
-      // 1. Build and simulate transaction to get raw XDR
-      const xdrResult = await prepareInitTx(address, shares);
-      setInitTxXdr(xdrResult);
+      setActionLoading(true);
+      const sender = address || shares[0].recipient.trim();
+      const xdr = await prepareInitTx(sender, shares.map(s => ({ ...s, recipient: s.recipient.trim() })));
+      setRawXdr(xdr);
 
-      // 2. Trigger wallet signing modal
-      const signedXdr = await signTx(xdrResult);
-      setInitSignedXdr(signedXdr);
-
-      // 3. Submit transaction to RPC
+      const signedXdr = await signTx(xdr);
       const hash = await submitTx(signedXdr);
-      setInitTxHash(hash);
+      setTxHash(hash);
+      setActionSuccess("Split contract successfully initialized on Stellar!");
+      if (address) fetchBalance(address);
     } catch (err: any) {
-      console.error(err);
-      setInitError(err.message || "Failed to configure split transaction.");
+      setActionError(err.message || "Failed to initialize split contract.");
     } finally {
-      setInitLoading(false);
+      setActionLoading(false);
     }
   };
 
-  const handlePaySplit = async () => {
-    if (!address) return;
-    setPayLoading(true);
-    setPayError(null);
-    setPayTxXdr(null);
-    setPaySignedXdr(null);
-    setPayTxHash(null);
+  // Execute Split Payment
+  const handlePaySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionError(null);
+    setActionSuccess(null);
+    setRawXdr(null);
+    setTxHash(null);
+
+    const cleanContractId = contractId.trim();
+    const cleanSender = senderAddress.trim();
+
+    if (!validateContractAddress(cleanContractId)) {
+      setActionError("Invalid Contract ID. Must be a 56-character C... address.");
+      return;
+    }
+    if (!validateStellarAddress(cleanSender)) {
+      setActionError("Invalid Sender Address. Must be a 56-character G... address.");
+      return;
+    }
+    if (Number(amount) <= 0) {
+      setActionError("Amount must be greater than zero.");
+      return;
+    }
 
     try {
-      // 1. Build and simulate transaction to get raw XDR
-      const xdrResult = await preparePayTx(senderAddress, tokenAddress, amount);
-      setPayTxXdr(xdrResult);
+      setActionLoading(true);
+      const xdr = await preparePayTx(cleanContractId, cleanSender, amount.trim());
+      setRawXdr(xdr);
 
-      // 2. Trigger wallet signing modal
-      const signedXdr = await signTx(xdrResult);
-      setPaySignedXdr(signedXdr);
-
-      // 3. Submit transaction to RPC
+      const signedXdr = await signTx(xdr);
       const hash = await submitTx(signedXdr);
-      setPayTxHash(hash);
-      
-      // Populate success modal and open it
-      setSuccessTxHash(hash);
-      setSuccessAmount(amount);
-      setSuccessShares([...shares]);
-      setShowSuccessModal(true);
+      setTxHash(hash);
+      setActionSuccess(`Split payment of ${amount} ${selectedToken} successfully settled on Stellar!`);
+      if (address) fetchBalance(address);
     } catch (err: any) {
-      console.error(err);
-      setPayError(err.message || "Failed to process split payment.");
+      setActionError(err.message || "Failed to execute split payment.");
     } finally {
-      setPayLoading(false);
+      setActionLoading(false);
     }
+  };
+
+  // Create New Invoice
+  const handleCreateInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientName || !newInvoiceAmount) return;
+
+    const newId = `INV-2026-00${invoices.length + 1}`;
+    const newInv: InvoiceData = {
+      id: newId,
+      clientName: newClientName,
+      clientEmail: newClientEmail || "client@dao.org",
+      squadName: newSquadName,
+      contractId: contractId,
+      token: selectedToken,
+      items: [{ description: newInvoiceService, amount: Number(newInvoiceAmount) }],
+      totalAmount: Number(newInvoiceAmount),
+      dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
+      createdAt: new Date().toISOString().split("T")[0],
+      status: "pending",
+    };
+
+    const updated = [newInv, ...invoices];
+    setInvoices(updated);
+    localStorage.setItem("splitsync_invoices", JSON.stringify(updated));
+    setNewClientName("");
+    setNewClientEmail("");
+    setActionSuccess(`Invoice ${newId} created successfully! Link: /invoice/${newId}`);
+  };
+
+  // Create New Share Proposal
+  const handleCreateProposal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProposalTitle) return;
+
+    if (newPropShareA + newPropShareB !== 10000) {
+      setActionError("Proposal shares must sum to exactly 10,000 basis points (100%).");
+      return;
+    }
+
+    const newProp: ProposalData = {
+      id: `PROP-00${proposals.length + 1}`,
+      title: newProposalTitle,
+      description: newProposalDesc || "Adjustment of contract distribution shares.",
+      proposer: address || "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT",
+      contractId: contractId,
+      proposedShares: [
+        { recipient: "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT", basisPoints: newPropShareA },
+        { recipient: "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT", basisPoints: newPropShareB },
+      ],
+      requiredSignatures: 2,
+      signedBy: [address || "GDUW6X2R63KZZZQQ6DYZY3B2I6K5W7FJP6Q4SLLGELMOHDYJ4R62SPLT"],
+      status: "active",
+      createdAt: new Date().toISOString().split("T")[0],
+    };
+
+    const updated = [newProp, ...proposals];
+    setProposals(updated);
+    localStorage.setItem("splitsync_proposals", JSON.stringify(updated));
+    setNewProposalTitle("");
+    setNewProposalDesc("");
+    setActionSuccess(`Proposal ${newProp.id} submitted for squad multi-sig approval!`);
+  };
+
+  // Sign Proposal
+  const handleSignProposal = (propId: string) => {
+    const updated = proposals.map((p) => {
+      if (p.id === propId) {
+        const signer = address || "GAZ7XLP4QWEY6YJNXHQD3P22V65KMRH46G6QALN32EVMW2MQL6G6SPLT";
+        const newSigned = p.signedBy.includes(signer) ? p.signedBy : [...p.signedBy, signer];
+        const isExecuted = newSigned.length >= p.requiredSignatures;
+        return {
+          ...p,
+          signedBy: newSigned,
+          status: isExecuted ? ("executed" as const) : p.status,
+        };
+      }
+      return p;
+    });
+    setProposals(updated);
+    localStorage.setItem("splitsync_proposals", JSON.stringify(updated));
+    setActionSuccess("Proposal signed! If quorum is reached, split rules are updated on-chain.");
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-8 space-y-8">
-      {/* Header Banner */}
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between p-6 bg-slate-layer border border-border-slate rounded-lg gap-4 shadow-xl">
+    <div className="space-y-8">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-layer/60 p-6 rounded-xl border border-border-slate backdrop-blur-sm shadow-xl">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span className="w-3 h-3 bg-emerald-mint rounded-full inline-block animate-pulse"></span>
-            SplitSync
-          </h1>
-          <p className="text-sm text-muted-silver mt-1">
-            Automated, trustless payment routing dApp on Soroban Testnet.
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-mint animate-pulse"></span>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">SPLITSYNC</h1>
+          </div>
+          <p className="text-xs text-muted-silver mt-1">Automated Zero-Dust Revenue Splitter on Stellar Soroban</p>
         </div>
 
-        {/* Connection States */}
         <div className="flex items-center gap-3">
           {status === "connected" && (
             <div className="text-right">
-              <div className="text-xs text-muted-silver">Connected Address</div>
+              <div className="text-xs text-muted-silver">Connected Account</div>
               <div className="font-mono text-sm text-emerald-mint">{truncatedAddress}</div>
               <div className="text-[10px] text-muted-silver mt-0.5">
                 {balanceLoading ? "Loading balance..." : tokenBalance !== null ? `Balance: ${formatTokenAmount(tokenBalance)}` : ""}
@@ -281,13 +498,11 @@ export default function Dashboard() {
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-border-slate gap-2 overflow-x-auto">
+      <div className="flex border-b border-border-slate gap-2 overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab("init")}
           className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "init"
-              ? "border-emerald-mint text-white"
-              : "border-transparent text-muted-silver hover:text-white"
+            activeTab === "init" ? "border-emerald-mint text-white" : "border-transparent text-muted-silver hover:text-white"
           }`}
         >
           1. Configure Split (Init)
@@ -295,247 +510,234 @@ export default function Dashboard() {
         <button
           onClick={() => setActiveTab("pay")}
           className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "pay"
-              ? "border-emerald-mint text-white"
-              : "border-transparent text-muted-silver hover:text-white"
+            activeTab === "pay" ? "border-emerald-mint text-white" : "border-transparent text-muted-silver hover:text-white"
           }`}
         >
-          2. Execute Split Payment (Pay)
+          2. Execute Split (Multi-Token & FX)
+        </button>
+        <button
+          onClick={() => setActiveTab("invoices")}
+          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === "invoices" ? "border-emerald-mint text-white" : "border-transparent text-muted-silver hover:text-white"
+          }`}
+        >
+          3. Client Invoicing (/invoice)
+        </button>
+        <button
+          onClick={() => setActiveTab("proposals")}
+          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === "proposals" ? "border-emerald-mint text-white" : "border-transparent text-muted-silver hover:text-white"
+          }`}
+        >
+          4. Dynamic Share Proposals
         </button>
         <button
           onClick={() => setActiveTab("admin")}
           className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-            activeTab === "admin"
-              ? "border-emerald-mint text-white"
-              : "border-transparent text-muted-silver hover:text-white"
+            activeTab === "admin" ? "border-emerald-mint text-white" : "border-transparent text-muted-silver hover:text-white"
           }`}
         >
           <svg className="w-4 h-4 text-emerald-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
-          3. Admin Panel
+          5. Admin Panel
         </button>
       </div>
 
-      {/* Content Layer */}
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Side: Active Form Card */}
-        <div className="lg:col-span-7 bg-slate-layer border border-border-slate rounded-lg p-6 shadow-2xl">
-          {activeTab === "init" ? (
-            /* Tab 1: Split configuration */
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-white">Revenue Split Shares Configuration</h2>
-                <p className="text-xs text-muted-silver mt-1">
-                  Specify the payment addresses and allocations. The total basis points must equal exactly 10,000 (100%).
-                </p>
-              </div>
+      {/* Notifications */}
+      {actionError && (
+        <div className="p-4 bg-muted-crimson/10 border border-muted-crimson/30 rounded-lg text-sm text-muted-crimson">
+          <strong>Transaction Error:</strong> {actionError}
+        </div>
+      )}
+      {actionSuccess && (
+        <div className="p-4 bg-emerald-mint/10 border border-emerald-mint/30 rounded-lg text-sm text-emerald-mint">
+          <strong>Success:</strong> {actionSuccess}
+        </div>
+      )}
 
-              {/* Dynamic Rows */}
-              <div className="space-y-3">
-                {shares.map((share, idx) => {
-                  const isAddressInvalid = share.recipient !== "" && !validateStellarAddress(share.recipient);
-                  const isBpInvalid = share.recipient !== "" && share.basisPoints <= 0;
-
-                  return (
-                    <div key={idx} className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-                      <div className="flex-1">
-                        <input
-                          type="text"
-                          placeholder="Recipient Public Key (G...)"
-                          value={share.recipient}
-                          onChange={(e) => updateShareRow(idx, "recipient", e.target.value)}
-                          className={`w-full px-3 py-2 bg-obsidian border text-white font-mono text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint ${
-                            isAddressInvalid ? "border-muted-crimson" : "border-border-slate"
-                          }`}
-                        />
-                      </div>
-                      <div className="w-full md:w-32 flex items-center gap-2">
-                        <input
-                          type="number"
-                          placeholder="Points"
-                          value={share.basisPoints || ""}
-                          onChange={(e) => updateShareRow(idx, "basisPoints", e.target.value)}
-                          className={`w-full px-3 py-2 bg-obsidian border text-white text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint ${
-                            isBpInvalid ? "border-muted-crimson" : "border-border-slate"
-                          }`}
-                        />
-                        <span className="text-xs text-muted-silver font-mono">
-                          {((share.basisPoints || 0) / 100).toFixed(1)}%
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => removeShareRow(idx)}
-                        disabled={shares.length <= 1}
-                        className="px-2 py-2 text-muted-silver hover:text-muted-crimson disabled:opacity-30 disabled:hover:text-muted-silver transition-colors cursor-pointer"
-                        title="Remove recipient"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Add Recipient Row button */}
-              <button
-                onClick={addShareRow}
-                className="px-4 py-2 border border-dashed border-border-slate hover:border-emerald-mint hover:text-emerald-mint text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors cursor-pointer w-full justify-center text-muted-silver"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                </svg>
-                Add Recipient Row
-              </button>
-
-              {/* Sum & Validation Display */}
-              <div className="p-4 bg-obsidian border border-border-slate rounded-lg flex items-center justify-between">
+      {/* TAB 1: CONFIGURE SPLIT */}
+      {activeTab === "init" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <form onSubmit={handleInitSubmit} className="space-y-6 bg-slate-layer/40 p-6 rounded-xl border border-border-slate">
+              <div className="flex justify-between items-center">
                 <div>
-                  <span className="text-xs text-muted-silver">Cumulative Shares:</span>
-                  <div className={`text-lg font-bold ${isBasisPointsValid ? "text-emerald-mint" : "text-muted-crimson animate-pulse"}`}>
-                    {totalBasisPoints} / 10,000 basis points
-                  </div>
+                  <h3 className="text-base font-bold text-white">Define Recipient Allocation</h3>
+                  <p className="text-xs text-muted-silver">Specify squad recipient wallet addresses and basis points (10,000 bp = 100%).</p>
                 </div>
-                <div className="text-right text-xs">
-                  {isBasisPointsValid ? (
-                    <span className="text-emerald-mint font-semibold flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Split complete (100.0%)
-                    </span>
-                  ) : (
-                    <span className="text-muted-crimson font-medium">
-                      Must equal exactly 10,000 (100%)
-                    </span>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={addShareRow}
+                  className="px-3 py-1.5 bg-slate-layer border border-border-slate hover:border-emerald-mint text-xs text-white rounded-md transition-all cursor-pointer"
+                >
+                  + Add Recipient
+                </button>
               </div>
 
-              {/* Configure Split Action */}
-              {status !== "connected" ? (
-                <button
-                  onClick={connect}
-                  className="w-full py-3 bg-emerald-mint hover:bg-opacity-90 font-semibold text-obsidian rounded-md shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer text-center"
-                >
-                  Connect Wallet to Initialize Split
-                </button>
-              ) : (
-                <button
-                  onClick={handleConfigureSplit}
-                  disabled={!isInitFormValid || initLoading}
-                  className={`w-full py-3 font-semibold rounded-md shadow-lg transition-all text-center flex items-center justify-center gap-2 ${
-                    isInitFormValid && !initLoading
-                      ? "bg-emerald-mint hover:bg-opacity-90 text-obsidian shadow-emerald-mint/10 cursor-pointer"
-                      : "bg-border-slate text-muted-silver cursor-not-allowed opacity-50"
-                  }`}
-                >
-                  {initLoading ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5 text-obsidian" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing Transaction...
-                    </>
-                  ) : (
-                    "Initialize Split Contract"
-                  )}
-                </button>
-              )}
-
-              {initError && (
-                <div className="p-4 bg-muted-crimson/10 border border-muted-crimson/30 rounded-md text-xs text-muted-crimson mt-4">
-                  <strong>Error:</strong> {initError}
-                </div>
-              )}
-            </div>
-          ) : activeTab === "pay" ? (
-            /* Tab 2: Make Split Payment */
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-white">Split Payment Payout</h2>
-                <p className="text-xs text-muted-silver mt-1">
-                  Trigger an automated payout on the contract. The contract will pull the specified token amount (USDC or native XLM) from your account and instantly split it among the configured addresses.
-                </p>
-              </div>
-
-              {/* Form Input Elements */}
               <div className="space-y-4">
-                {/* Stablecoin Contract Address */}
+                {shares.map((share, idx) => (
+                  <div key={idx} className="flex gap-3 items-center bg-obsidian p-3.5 rounded-lg border border-border-slate/70">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[11px] text-muted-silver block">Recipient #{idx + 1} Public Address (G...)</label>
+                      <input
+                        type="text"
+                        value={share.recipient}
+                        onChange={(e) => updateShare(idx, "recipient", e.target.value)}
+                        placeholder="G..."
+                        className="w-full px-3 py-1.5 bg-slate-layer/50 border border-border-slate text-white text-xs font-mono rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                      />
+                    </div>
+
+                    <div className="w-32 space-y-1">
+                      <label className="text-[11px] text-muted-silver block">Basis Points (bp)</label>
+                      <input
+                        type="number"
+                        value={share.basisPoints}
+                        onChange={(e) => updateShare(idx, "basisPoints", Number(e.target.value))}
+                        placeholder="5000"
+                        className="w-full px-3 py-1.5 bg-slate-layer/50 border border-border-slate text-white text-xs font-mono rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                      />
+                      <span className="text-[10px] text-emerald-mint block text-right font-medium">
+                        {((share.basisPoints || 0) / 100).toFixed(1)}%
+                      </span>
+                    </div>
+
+                    {shares.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => removeShareRow(idx)}
+                        className="text-muted-crimson hover:text-red-400 p-2 text-sm cursor-pointer mt-3"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between items-center p-3 bg-obsidian rounded-lg border border-border-slate">
+                <span className="text-xs text-muted-silver font-semibold">Total Allocation:</span>
+                <span className={`font-mono text-sm font-bold ${totalBasisPoints === 10000 ? "text-emerald-mint" : "text-muted-crimson"}`}>
+                  {totalBasisPoints} / 10,000 bp ({(totalBasisPoints / 100).toFixed(1)}%)
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={actionLoading || totalBasisPoints !== 10000}
+                className="w-full py-3 bg-emerald-mint hover:bg-opacity-90 disabled:opacity-50 text-obsidian font-bold rounded-md shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer text-sm"
+              >
+                {actionLoading ? "Deploying & Signing..." : "Initialize Split Contract on Stellar"}
+              </button>
+            </form>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-slate-layer/40 p-5 rounded-xl border border-border-slate space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Protocol Security Guarantees</h4>
+              <ul className="text-xs text-muted-silver space-y-2">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-mint">✓</span>
+                  <span><strong>Zero-Dust Invariant:</strong> Remainder stroops are automatically routed to the final recipient.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-mint">✓</span>
+                  <span><strong>No Middleman Risk:</strong> Client funds are distributed atomically in a single ledger transaction.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-mint">✓</span>
+                  <span><strong>Gasless Ready:</strong> Creators can sponsor fees via Stellar CAP-0015 protocol.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: EXECUTE SPLIT PAYMENT (MULTI-TOKEN & FX CONVERTER) */}
+      {activeTab === "pay" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <form onSubmit={handlePaySubmit} className="space-y-5 bg-slate-layer/40 p-6 rounded-xl border border-border-slate">
+              <div>
+                <h3 className="text-base font-bold text-white">Execute Atomic Revenue Split</h3>
+                <p className="text-xs text-muted-silver">Disperse payments across squad recipients in a single atomic transaction.</p>
+              </div>
+
+              {/* Multi-Token Asset & Fiat FX Converter Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-obsidian rounded-lg border border-border-slate">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-silver block">
-                    Token / Asset Address (e.g. USDC or Native XLM)
-                  </label>
+                  <label className="text-[11px] text-muted-silver uppercase tracking-wider font-semibold block">Payout Asset</label>
+                  <select
+                    value={selectedToken}
+                    onChange={(e) => setSelectedToken(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-layer border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint cursor-pointer font-bold"
+                  >
+                    <option value="USDC">USDC - USD Coin (Circle SAC)</option>
+                    <option value="XLM">XLM - Stellar Lumens (Native)</option>
+                    <option value="EURC">EURC - Euro Coin (Circle SAC)</option>
+                    <option value="PYUSD">PYUSD - PayPal USD</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-silver uppercase tracking-wider font-semibold block">Local Fiat FX View</label>
+                  <select
+                    value={selectedFiat}
+                    onChange={(e) => setSelectedFiat(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-layer border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint cursor-pointer font-bold"
+                  >
+                    <option value="PHP">PHP ₱ - Philippine Peso</option>
+                    <option value="USD">USD $ - US Dollar</option>
+                    <option value="EUR">EUR € - Euro</option>
+                    <option value="GBP">GBP £ - British Pound</option>
+                    <option value="BRL">BRL R$ - Brazilian Real</option>
+                    <option value="INR">INR ₹ - Indian Rupee</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-silver block">Contract ID (C...)</label>
                   <input
                     type="text"
-                    value={tokenAddress}
-                    onChange={(e) => setTokenAddress(e.target.value)}
-                    placeholder="Token Contract Key (C...)"
-                    className={`w-full px-3 py-2 bg-obsidian border text-white font-mono text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint ${
-                      tokenAddress !== "" && !validateContractAddress(tokenAddress)
-                        ? "border-muted-crimson"
-                        : "border-border-slate"
-                    }`}
+                    value={contractId}
+                    onChange={(e) => setContractId(e.target.value)}
+                    placeholder="CA7SDEPQ..."
+                    className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white font-mono text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
                   />
-                  {!validateContractAddress(tokenAddress) && tokenAddress !== "" && (
-                    <span className="text-[10px] text-muted-crimson">Must be a valid G... or C... address.</span>
-                  )}
                 </div>
 
-                {/* Sender Address */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-silver block">
-                    Sender Account Address (Paying Funds)
-                  </label>
+                  <label className="text-xs font-semibold text-muted-silver block">Sender Public Address (G...)</label>
                   <input
                     type="text"
                     value={senderAddress}
                     onChange={(e) => setSenderAddress(e.target.value)}
-                    placeholder="Sender Public Key (G...)"
-                    className={`w-full px-3 py-2 bg-obsidian border text-white font-mono text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint ${
-                      senderAddress !== "" && !validateStellarAddress(senderAddress)
-                        ? "border-muted-crimson"
-                        : "border-border-slate"
-                    }`}
+                    placeholder="G..."
+                    className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white font-mono text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
                   />
-                  {!validateStellarAddress(senderAddress) && senderAddress !== "" && (
-                    <span className="text-[10px] text-muted-crimson">Must be a valid G... public address.</span>
-                  )}
                 </div>
 
-                {/* Amount */}
                 <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-muted-silver block">
-                      Total Amount to Pay (in Base Units / Stroops)
-                    </label>
-                    {status === "connected" && (
-                      <span className="text-[10px] text-emerald-mint font-medium">
-                        {balanceLoading ? (
-                          "Loading balance..."
-                        ) : tokenBalance !== null ? (
-                          `Wallet Balance: ${formatTokenAmount(tokenBalance)}`
-                        ) : (
-                          "Failed to load balance"
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="e.g. 1000"
-                      className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint"
-                    />
-                    <span className="absolute right-3 top-2.5 text-xs text-muted-silver font-mono">
-                      {(Number(amount) / 10000000).toFixed(7)} Token Units
-                    </span>
-                  </div>
+                  <label className="text-xs font-semibold text-muted-silver block">Total Amount to Split ({selectedToken})</label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="1000"
+                    className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-sm rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                  />
+                  <span className="text-[11px] text-emerald-mint block text-right font-mono">
+                    Estimated Total Value: {FIAT_SYMBOLS[selectedFiat]}
+                    {((Number(amount) || 0) * TOKEN_USD_VALUE[selectedToken] * FX_RATES[selectedFiat]).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    {selectedFiat}
+                  </span>
                 </div>
               </div>
 
@@ -543,41 +745,39 @@ export default function Dashboard() {
               {shares.length > 0 && Number(amount) > 0 && (
                 <div className="bg-obsidian border border-border-slate/60 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Pre-Flight Split Estimator</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Pre-Flight Split Estimator (with Live FX)</h4>
                     <span className="text-[10px] text-emerald-mint font-semibold bg-emerald-mint/10 px-2 py-0.5 rounded-full">
-                      Pre-flight Calculator
+                      Zero-Dust Calculator
                     </span>
                   </div>
-                  <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                     {(() => {
                       let cumulative = BigInt(0);
                       const total = BigInt(amount || "0");
-                      const estPayouts = shares.map((share, idx) => {
+                      return shares.map((share, idx) => {
                         const basisPoints = BigInt(share.basisPoints || 0);
-                        let payout = BigInt(0);
-                        if (idx === shares.length - 1) {
-                          payout = total - cumulative;
-                        } else {
-                          payout = (total * basisPoints) / BigInt(10000);
-                          cumulative += payout;
-                        }
-                        return {
-                          ...share,
-                          payout: formatTokenAmount(String(payout)),
-                        };
-                      });
+                        let payout = idx === shares.length - 1 ? total - cumulative : (total * basisPoints) / BigInt(10000);
+                        if (idx !== shares.length - 1) cumulative += payout;
 
-                      return estPayouts.map((est, idx) => {
-                        const percentage = ((est.basisPoints || 0) / 100).toFixed(1);
-                        const truncRecipient = est.recipient.length > 12 
-                          ? `${est.recipient.slice(0, 6)}...${est.recipient.slice(-6)}` 
-                          : est.recipient;
+                        const percentage = ((share.basisPoints || 0) / 100).toFixed(1);
+                        const fiatVal = (Number(payout) * TOKEN_USD_VALUE[selectedToken] * FX_RATES[selectedFiat]).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        });
 
                         return (
                           <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-slate-layer/40 rounded border border-border-slate/30">
-                            <span className="font-mono text-white" title={est.recipient}>{truncRecipient}</span>
+                            <div>
+                              <span className="font-mono text-white text-[11px] block">
+                                {share.recipient ? `${share.recipient.slice(0, 6)}...${share.recipient.slice(-6)}` : `Recipient #${idx + 1}`}
+                              </span>
+                              <span className="text-[10px] text-emerald-mint font-medium">
+                                ≈ {FIAT_SYMBOLS[selectedFiat]}
+                                {fiatVal} {selectedFiat}
+                              </span>
+                            </div>
                             <div className="text-right">
-                              <span className="font-bold text-emerald-mint">{est.payout} Units</span>
+                              <span className="font-bold text-white">{payout.toString()} {selectedToken}</span>
                               <span className="text-[9px] text-muted-silver ml-1.5">({percentage}%)</span>
                             </div>
                           </div>
@@ -588,531 +788,453 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Gasless Fee Sponsorship (Stellar Fee-Bump) Card */}
+              {/* Gasless Fee Sponsorship */}
               <div className="bg-obsidian border border-emerald-mint/30 rounded-lg p-4 space-y-2.5">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-mint animate-pulse"></span>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">Gasless Fee Sponsorship</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">Gasless Fee Sponsorship (Stellar CAP-0015)</h4>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsFeeSponsored(!isFeeSponsored)}
                     className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
-                      isFeeSponsored 
-                        ? "bg-emerald-mint/20 text-emerald-mint border-emerald-mint/50"
-                        : "bg-slate-layer text-muted-silver border-border-slate hover:text-white"
+                      isFeeSponsored ? "bg-emerald-mint/20 text-emerald-mint border-emerald-mint/50" : "bg-slate-layer text-muted-silver border-border-slate"
                     }`}
                   >
                     {isFeeSponsored ? "SPONSORED (0 GAS)" : "DISABLED"}
                   </button>
                 </div>
-                
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between items-center text-muted-silver">
-                    <span>User Network Fee:</span>
-                    <span className="font-mono text-emerald-mint font-bold">{isFeeSponsored ? "0.00000 XLM (100% Free)" : "~0.00001 XLM"}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-muted-silver">
-                    <span>Sponsor Relayer:</span>
-                    <span className="font-mono text-white text-[11px] truncate max-w-[200px]" title={sponsorAddress}>
-                      {sponsorAddress.slice(0, 6)}...{sponsorAddress.slice(-6)}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-silver pt-1 border-t border-border-slate/40">
-                    ⚡ Powered by Stellar <strong>CAP-0015 Fee-Bump Protocol</strong>. Creators never need XLM reserves for network gas fees.
-                  </p>
+                <div className="flex justify-between items-center text-xs text-muted-silver">
+                  <span>User Gas Cost:</span>
+                  <span className="font-mono text-emerald-mint font-bold">{isFeeSponsored ? "0.00000 XLM (100% Free)" : "~0.00001 XLM"}</span>
                 </div>
               </div>
 
-              {/* Pay Action Button */}
-              {status !== "connected" ? (
-                <button
-                  onClick={connect}
-                  className="w-full py-3 bg-emerald-mint hover:bg-opacity-90 font-semibold text-obsidian rounded-md shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer text-center"
-                >
-                  Connect Wallet to Pay
-                </button>
-              ) : (
-                <button
-                  onClick={handlePaySplit}
-                  disabled={!isPayFormValid || payLoading}
-                  className={`w-full py-3 font-semibold rounded-md shadow-lg transition-all text-center flex items-center justify-center gap-2 ${
-                    isPayFormValid && !payLoading
-                      ? "bg-emerald-mint hover:bg-opacity-90 text-obsidian shadow-emerald-mint/10 cursor-pointer"
-                      : "bg-border-slate text-muted-silver cursor-not-allowed opacity-50"
-                  }`}
-                >
-                  {payLoading ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5 text-obsidian" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing Split Payment...
-                    </>
-                  ) : (
-                    "Trigger Split Payment"
-                  )}
-                </button>
-              )}
-
-              {payError && (
-                <div className="p-4 bg-muted-crimson/10 border border-muted-crimson/30 rounded-md text-xs text-muted-crimson mt-4">
-                  <strong>Error:</strong> {payError}
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Tab 3: Admin Panel View */
-            <div className="space-y-6">
-              {!isAdminAuthenticated ? (
-                /* Admin Login Gate */
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-emerald-mint/10 flex items-center justify-center border border-emerald-mint/30">
-                        <svg className="w-4 h-4 text-emerald-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </div>
-                      <h2 className="text-lg font-semibold text-white">Admin Authentication Gate</h2>
-                    </div>
-                    <p className="text-xs text-muted-silver mt-1">
-                      Enter administrative credentials to access contract telemetry, trustline status scanners, and ledger audit exports.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleAdminLogin} className="space-y-4">
-                    {adminAuthError && (
-                      <div className="p-3 bg-muted-crimson/10 border border-muted-crimson/30 rounded-md text-xs text-muted-crimson flex items-center gap-2">
-                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {adminAuthError}
-                      </div>
-                    )}
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-silver block">Username</label>
-                      <input
-                        type="text"
-                        value={adminUsernameInput}
-                        onChange={(e) => setAdminUsernameInput(e.target.value)}
-                        placeholder="e.g. admin"
-                        className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-silver block">Password</label>
-                      <div className="relative">
-                        <input
-                          type={showAdminPassword ? "text" : "password"}
-                          value={adminPasswordInput}
-                          onChange={(e) => setAdminPasswordInput(e.target.value)}
-                          placeholder="e.g. admin123"
-                          className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-mint pr-14"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowAdminPassword(!showAdminPassword)}
-                          className="absolute right-3 top-2.5 text-xs text-muted-silver hover:text-white"
-                        >
-                          {showAdminPassword ? "Hide" : "Show"}
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full py-2.5 bg-emerald-mint hover:bg-opacity-90 font-semibold text-obsidian text-sm rounded-md transition-all cursor-pointer shadow-lg shadow-emerald-mint/10"
-                    >
-                      Unlock Admin Panel
-                    </button>
-
-                    <div className="p-3 bg-obsidian/60 border border-border-slate/40 rounded-md text-[11px] text-muted-silver">
-                      <span className="font-semibold text-emerald-mint">Default Credentials:</span> Username: <code className="text-white font-mono bg-slate-layer px-1 py-0.5 rounded">admin</code> | Password: <code className="text-white font-mono bg-slate-layer px-1 py-0.5 rounded">admin123</code>
-                    </div>
-                  </form>
-                </div>
-              ) : (
-                /* Authenticated Admin Panel View */
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center pb-3 border-b border-border-slate">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-mint animate-pulse"></span>
-                        <h2 className="text-lg font-semibold text-white">System Admin & Telemetry Control</h2>
-                      </div>
-                      <p className="text-xs text-muted-silver mt-0.5">
-                        Active monitoring panel for contract state, trustlines, and user onboarding proof logs.
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleAdminLogout}
-                      className="px-3 py-1.5 bg-muted-crimson/10 hover:bg-muted-crimson/20 border border-muted-crimson/30 text-muted-crimson text-xs font-semibold rounded-md transition-all cursor-pointer"
-                    >
-                      Lock / Logout
-                    </button>
-                  </div>
-
-                  {/* Contract Metadata Card */}
-                  <div className="bg-obsidian border border-border-slate rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold uppercase tracking-wider text-muted-silver">Contract Deployment Status</span>
-                      <span className="text-[10px] text-emerald-mint font-semibold bg-emerald-mint/10 border border-emerald-mint/30 px-2 py-0.5 rounded-full">
-                        Soroban Testnet Active
-                      </span>
-                    </div>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between items-center p-2 bg-slate-layer/50 rounded border border-border-slate/40">
-                        <span className="text-muted-silver">Contract ID:</span>
-                        <span className="font-mono text-white text-[11px] truncate max-w-[240px]">CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-layer/50 rounded border border-border-slate/40">
-                        <span className="text-muted-silver">Owner Address:</span>
-                        <span className="font-mono text-white text-[11px] truncate max-w-[240px]">GCCY5TQ262GIYZDRRYENCSWUJXT3THBQQ42RINCESXTYZMGTL2NJM4SE</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* On-Chain Activity Metrics */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-obsidian border border-border-slate/60 p-3 rounded-lg text-center space-y-1">
-                      <span className="text-[10px] text-muted-silver uppercase block font-semibold">Total Onboarded</span>
-                      <span className="text-xl font-bold text-emerald-mint">50+</span>
-                      <span className="text-[9px] text-muted-silver block">Verified Testers</span>
-                    </div>
-                    <div className="bg-obsidian border border-border-slate/60 p-3 rounded-lg text-center space-y-1">
-                      <span className="text-[10px] text-muted-silver uppercase block font-semibold">Avg Settlement</span>
-                      <span className="text-xl font-bold text-white">~3.8s</span>
-                      <span className="text-[9px] text-muted-silver block">Ledger Finality</span>
-                    </div>
-                    <div className="bg-obsidian border border-border-slate/60 p-3 rounded-lg text-center space-y-1">
-                      <span className="text-[10px] text-muted-silver uppercase block font-semibold">Dust Protection</span>
-                      <span className="text-xl font-bold text-emerald-mint">Active</span>
-                      <span className="text-[9px] text-muted-silver block">Auto Remainder</span>
-                    </div>
-                  </div>
-
-                  {/* Recipient Trustline Health Scanner */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Recipient Trustline Health Scanner</h3>
-                      <span className="text-[10px] text-muted-silver">Live USDC / SAC Scan</span>
-                    </div>
-                    <div className="space-y-2">
-                      {shares.map((share, idx) => {
-                        const hasAddr = share.recipient && validateStellarAddress(share.recipient);
-                        return (
-                          <div key={idx} className="flex justify-between items-center p-2.5 bg-obsidian border border-border-slate/60 rounded-md text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${hasAddr ? "bg-emerald-mint" : "bg-muted-crimson"}`}></span>
-                              <span className="font-mono text-white text-xs">
-                                {share.recipient ? (share.recipient.length > 16 ? `${share.recipient.slice(0, 8)}...${share.recipient.slice(-8)}` : share.recipient) : `Recipient #${idx + 1} (Empty)`}
-                              </span>
-                            </div>
-                            <div>
-                              {hasAddr ? (
-                                <span className="text-[10px] bg-emerald-mint/10 text-emerald-mint px-2 py-0.5 rounded border border-emerald-mint/20 font-medium">
-                                  Trustline Active (Ready)
-                                </span>
-                              ) : (
-                                <span className="text-[10px] bg-muted-crimson/10 text-muted-crimson px-2 py-0.5 rounded border border-muted-crimson/20 font-medium">
-                                  Invalid Address
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Audit Logs & CSV Export */}
-                  <div className="p-4 bg-obsidian border border-border-slate rounded-lg flex justify-between items-center">
-                    <div>
-                      <h4 className="text-xs font-bold text-white">Onboarding & Audit Records</h4>
-                      <p className="text-[11px] text-muted-silver mt-0.5">
-                        Download the 50-user testnet onboarding transaction log spreadsheet.
-                      </p>
-                    </div>
-                    <a
-                      href="/onboarding_responses.csv"
-                      download="onboarding_responses.csv"
-                      className="px-3.5 py-2 bg-emerald-mint hover:bg-opacity-90 text-obsidian text-xs font-bold rounded-md transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-mint/10"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Export CSV
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right Side: Ledger Operations Inspector Card */}
-        <div className="lg:col-span-5 bg-slate-layer border border-border-slate rounded-lg p-6 shadow-2xl space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold text-white">XDR Ledger Inspector</h2>
-            <p className="text-xs text-muted-silver mt-1">
-              Cryptographic transaction envelope details generated, simulated, and signed.
-            </p>
+              <button
+                type="submit"
+                disabled={actionLoading}
+                className="w-full py-3 bg-emerald-mint hover:bg-opacity-90 disabled:opacity-50 text-obsidian font-bold rounded-md shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer text-sm"
+              >
+                {actionLoading ? "Splitting On-Chain..." : `Execute ${amount} ${selectedToken} Split`}
+              </button>
+            </form>
           </div>
 
-          {/* Init Tab Result Inspector */}
-          {activeTab === "init" ? (
-            <div className="space-y-4">
-              {/* Unsigned XDR */}
-              <div>
-                <label className="text-xs font-semibold text-muted-silver block mb-1">
-                  1. Unsigned Transaction Envelope (XDR)
-                </label>
-                {initTxXdr ? (
-                  <textarea
-                    readOnly
-                    value={initTxXdr}
-                    className="w-full h-24 p-2 bg-obsidian border border-border-slate rounded text-[10px] text-muted-silver font-mono focus:outline-none resize-none"
-                  />
-                ) : (
-                  <div className="w-full h-24 border border-dashed border-border-slate rounded flex items-center justify-center text-xs text-muted-silver bg-obsidian">
-                    Pending transaction simulation...
-                  </div>
-                )}
-              </div>
-
-              {/* Signed XDR */}
-              <div>
-                <label className="text-xs font-semibold text-muted-silver block mb-1">
-                  2. Cryptographically Signed XDR Envelope
-                </label>
-                {initSignedXdr ? (
-                  <textarea
-                    readOnly
-                    value={initSignedXdr}
-                    className="w-full h-24 p-2 bg-obsidian border border-border-slate rounded text-[10px] text-emerald-mint font-mono focus:outline-none resize-none"
-                  />
-                ) : (
-                  <div className="w-full h-24 border border-dashed border-border-slate rounded flex items-center justify-center text-xs text-muted-silver bg-obsidian">
-                    Pending signature authorization...
-                  </div>
-                )}
-              </div>
-
-              {/* Transaction Hash */}
-              {initTxHash && (
-                <div className="p-4 bg-emerald-mint/10 border border-emerald-mint/30 rounded-lg space-y-2">
-                  <div className="text-xs font-semibold text-emerald-mint flex items-center gap-1">
-                    <span className="w-2 h-2 bg-emerald-mint rounded-full inline-block"></span>
-                    Transaction Submitted Successfully!
-                  </div>
-                  <div className="text-[11px] text-white break-all font-mono">
-                    Hash: {initTxHash}
-                  </div>
-                  <div className="text-right">
-                    <a
-                      href={`https://stellar.expert/explorer/testnet/tx/${initTxHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-emerald-mint hover:underline font-semibold"
-                    >
-                      View on Stellar.expert explorer &rarr;
-                    </a>
-                  </div>
+          <div className="space-y-4">
+            <div className="bg-slate-layer/40 p-5 rounded-xl border border-border-slate space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Live Telemetry</h4>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between text-muted-silver">
+                  <span>Network:</span>
+                  <span className="text-white font-mono">Stellar Testnet / Mainnet</span>
                 </div>
-              )}
+                <div className="flex justify-between text-muted-silver">
+                  <span>Selected Asset:</span>
+                  <span className="text-emerald-mint font-bold">{selectedToken}</span>
+                </div>
+                <div className="flex justify-between text-muted-silver">
+                  <span>FX Rate:</span>
+                  <span className="text-white font-mono">1 {selectedToken} = {FIAT_SYMBOLS[selectedFiat]}{(TOKEN_USD_VALUE[selectedToken] * FX_RATES[selectedFiat]).toFixed(2)} {selectedFiat}</span>
+                </div>
+              </div>
             </div>
-          ) : activeTab === "pay" ? (
-            /* Pay Tab Result Inspector */
-            <div className="space-y-4">
-              {/* Unsigned XDR */}
-              <div>
-                <label className="text-xs font-semibold text-muted-silver block mb-1">
-                  1. Unsigned Transaction Envelope (XDR)
-                </label>
-                {payTxXdr ? (
-                  <textarea
-                    readOnly
-                    value={payTxXdr}
-                    className="w-full h-24 p-2 bg-obsidian border border-border-slate rounded text-[10px] text-muted-silver font-mono focus:outline-none resize-none"
-                  />
-                ) : (
-                  <div className="w-full h-24 border border-dashed border-border-slate rounded flex items-center justify-center text-xs text-muted-silver bg-obsidian">
-                    Pending transaction simulation...
-                  </div>
-                )}
-              </div>
-
-              {/* Signed XDR */}
-              <div>
-                <label className="text-xs font-semibold text-muted-silver block mb-1">
-                  2. Cryptographically Signed XDR Envelope
-                </label>
-                {paySignedXdr ? (
-                  <textarea
-                    readOnly
-                    value={paySignedXdr}
-                    className="w-full h-24 p-2 bg-obsidian border border-border-slate rounded text-[10px] text-emerald-mint font-mono focus:outline-none resize-none"
-                  />
-                ) : (
-                  <div className="w-full h-24 border border-dashed border-border-slate rounded flex items-center justify-center text-xs text-muted-silver bg-obsidian">
-                    Pending signature authorization...
-                  </div>
-                )}
-              </div>
-
-              {/* Transaction Hash */}
-              {payTxHash && (
-                <div className="p-4 bg-emerald-mint/10 border border-emerald-mint/30 rounded-lg space-y-2">
-                  <div className="text-xs font-semibold text-emerald-mint flex items-center gap-1">
-                    <span className="w-2 h-2 bg-emerald-mint rounded-full inline-block"></span>
-                    Split Payment Complete!
-                  </div>
-                  <div className="text-[11px] text-white break-all font-mono">
-                    Hash: {payTxHash}
-                  </div>
-                  <div className="text-right">
-                    <a
-                      href={`https://stellar.expert/explorer/testnet/tx/${payTxHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-emerald-mint hover:underline font-semibold"
-                    >
-                      View on Stellar.expert explorer &rarr;
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Admin Telemetry & Security Inspector */
-            <div className="space-y-4">
-              <div className="p-4 bg-obsidian border border-border-slate rounded-lg space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-white">Admin Security Status</span>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isAdminAuthenticated ? "bg-emerald-mint/10 text-emerald-mint border border-emerald-mint/30" : "bg-muted-crimson/10 text-muted-crimson border border-muted-crimson/30"}`}>
-                    {isAdminAuthenticated ? "Authenticated" : "Locked"}
-                  </span>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between items-center text-muted-silver">
-                    <span>Access Level:</span>
-                    <span className="text-white font-mono">{isAdminAuthenticated ? "Full Read/Write" : "Public Limited"}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-muted-silver">
-                    <span>Session Storage:</span>
-                    <span className="text-white font-mono">{isAdminAuthenticated ? "splitsync_admin_auth" : "None"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-obsidian border border-border-slate rounded-lg space-y-3">
-                <h4 className="text-xs font-bold text-white">System Security Directives</h4>
-                <ul className="text-xs text-muted-silver space-y-1.5 list-disc list-inside">
-                  <li>Soroban contract initialization is immutable once configured.</li>
-                  <li>Recipient trustlines must be active before executing stablecoin payouts.</li>
-                  <li>Division dust remainder is automatically routed to the final recipient.</li>
-                </ul>
-              </div>
-
-              {isAdminAuthenticated && (
-                <button
-                  onClick={handleAdminLogout}
-                  className="w-full py-2.5 bg-muted-crimson/10 hover:bg-muted-crimson/20 border border-muted-crimson/30 text-muted-crimson font-semibold text-xs rounded-md transition-all cursor-pointer text-center"
-                >
-                  Terminate Admin Session
-                </button>
-              )}
-            </div>
-          )}
+          </div>
         </div>
-      </main>
+      )}
 
-      {/* Transaction Success Receipt Modal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-obsidian/85 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-layer border border-border-slate max-w-md w-full rounded-lg shadow-2xl p-6 space-y-6 animate-in fade-in zoom-in-95 duration-200">
-            {/* Success Header */}
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="w-12 h-12 bg-emerald-mint/20 border border-emerald-mint rounded-full flex items-center justify-center text-emerald-mint">
-                <svg className="w-6 h-6 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                </svg>
+      {/* TAB 3: CLIENT INVOICING & CHECKOUT */}
+      {activeTab === "invoices" && (
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Create Invoice Form */}
+            <div className="lg:col-span-1 bg-slate-layer/40 p-6 rounded-xl border border-border-slate space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-white">Generate Client Invoice</h3>
+                <p className="text-xs text-muted-silver">Create a shareable checkout link for your clients to pay on-chain.</p>
               </div>
-              <h3 className="text-xl font-bold text-white tracking-tight">Transaction Success!</h3>
-              <p className="text-xs text-muted-silver">
-                The payout was executed successfully and split on-chain.
-              </p>
+
+              <form onSubmit={handleCreateInvoice} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-silver font-semibold block">Client / DAO Name</label>
+                  <input
+                    type="text"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="e.g. Acme Ventures"
+                    className="w-full px-3 py-1.5 bg-obsidian border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-silver font-semibold block">Client Email</label>
+                  <input
+                    type="email"
+                    value={newClientEmail}
+                    onChange={(e) => setNewClientEmail(e.target.value)}
+                    placeholder="billing@client.com"
+                    className="w-full px-3 py-1.5 bg-obsidian border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-silver font-semibold block">Service Description</label>
+                  <input
+                    type="text"
+                    value={newInvoiceService}
+                    onChange={(e) => setNewInvoiceService(e.target.value)}
+                    placeholder="Sprint milestone deliverables"
+                    className="w-full px-3 py-1.5 bg-obsidian border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-silver font-semibold block">Invoice Amount ({selectedToken})</label>
+                  <input
+                    type="number"
+                    value={newInvoiceAmount}
+                    onChange={(e) => setNewInvoiceAmount(e.target.value)}
+                    placeholder="2500"
+                    className="w-full px-3 py-1.5 bg-obsidian border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-emerald-mint hover:bg-opacity-90 text-obsidian font-bold rounded-md shadow transition-all cursor-pointer text-xs mt-2"
+                >
+                  ⚡ Create Hosted Invoice
+                </button>
+              </form>
             </div>
 
-            {/* Total Paid */}
-            <div className="bg-obsidian border border-border-slate rounded-lg p-4 flex flex-col items-center justify-center text-center">
-              <span className="text-[10px] uppercase tracking-wider text-muted-silver font-semibold">Total Amount Split</span>
-              <span className="text-2xl font-bold text-emerald-mint mt-1">
-                {successAmount ? formatTokenAmount(successAmount) : "0"} Token Units
-              </span>
-            </div>
+            {/* Invoices List */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-bold text-white">Active Squad Invoices</h3>
+                <span className="text-xs text-muted-silver">{invoices.length} Total Invoices</span>
+              </div>
 
-            {/* Splits Breakdown */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Recipient Breakdown</h4>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {successShares.map((share, idx) => {
-                  const basisPoints = BigInt(share.basisPoints || 0);
-                  const totalAmount = BigInt(successAmount || "0");
-                  const payout = (totalAmount * basisPoints) / BigInt(10000);
-                  const percentage = (Number(basisPoints) / 100).toFixed(1);
-
-                  // Truncate recipient address for readability
-                  const rawAddr = share.recipient || "";
-                  const truncAddr = rawAddr.length > 12 
-                    ? `${rawAddr.slice(0, 6)}...${rawAddr.slice(-6)}` 
-                    : rawAddr;
-
-                  return (
-                    <div 
-                      key={idx} 
-                      className="flex items-center justify-between p-3 bg-obsidian/50 border border-border-slate/50 rounded-lg text-xs"
-                    >
-                      <div className="space-y-0.5">
-                        <div className="font-mono text-white" title={rawAddr}>{truncAddr}</div>
-                        <div className="text-[10px] text-muted-silver">Allocation Share</div>
+              <div className="space-y-3">
+                {invoices.map((inv) => (
+                  <div key={inv.id} className="bg-slate-layer/50 border border-border-slate rounded-xl p-4.5 space-y-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-emerald-mint">{inv.id}</span>
+                          <span className="text-xs font-bold text-white">{inv.clientName}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-silver mt-0.5">{inv.items[0]?.description}</p>
                       </div>
-                      <div className="text-right space-y-0.5">
-                        <div className="font-semibold text-emerald-mint">+{formatTokenAmount(String(payout))} Units</div>
-                        <div className="text-[10px] text-muted-silver">{percentage}% Split</div>
+                      <div className="text-left sm:text-right">
+                        <span className="font-mono text-sm font-extrabold text-white block">
+                          ${inv.totalAmount.toLocaleString()} {inv.token}
+                        </span>
+                        <span
+                          className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                            inv.status === "paid" ? "bg-emerald-mint/20 text-emerald-mint" : "bg-amber-400/20 text-amber-300"
+                          }`}
+                        >
+                          {inv.status === "paid" ? "✓ Paid & Settled" : "⏳ Pending Payment"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-slate/50 text-xs">
+                      <span className="text-[11px] text-muted-silver">Due: {inv.dueDate}</span>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/invoice/${inv.id}`}
+                          target="_blank"
+                          className="px-3 py-1 bg-obsidian border border-border-slate hover:border-emerald-mint text-[11px] text-white rounded transition-all flex items-center gap-1"
+                        >
+                          🔗 Open Checkout Link
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: DYNAMIC SHARE PROPOSALS (MULTI-SIG SQUAD VOTING) */}
+      {activeTab === "proposals" && (
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Create Proposal Form */}
+            <div className="lg:col-span-1 bg-slate-layer/40 p-6 rounded-xl border border-border-slate space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-white">Create Share Revision Proposal</h3>
+                <p className="text-xs text-muted-silver">Propose new split percentages across squad members without redeploying.</p>
+              </div>
+
+              <form onSubmit={handleCreateProposal} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-silver font-semibold block">Proposal Title</label>
+                  <input
+                    type="text"
+                    value={newProposalTitle}
+                    onChange={(e) => setNewProposalTitle(e.target.value)}
+                    placeholder="e.g. Adjust Sprint 5 Frontend Split"
+                    className="w-full px-3 py-1.5 bg-obsidian border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-silver font-semibold block">Rationale / Description</label>
+                  <textarea
+                    value={newProposalDesc}
+                    onChange={(e) => setNewProposalDesc(e.target.value)}
+                    placeholder="Reason for basis points adjustment..."
+                    rows={2}
+                    className="w-full px-3 py-1.5 bg-obsidian border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-silver block">Member A (bp)</label>
+                    <input
+                      type="number"
+                      value={newPropShareA}
+                      onChange={(e) => setNewPropShareA(Number(e.target.value))}
+                      className="w-full px-2 py-1 bg-obsidian border border-border-slate text-white text-xs rounded font-mono"
+                    />
+                    <span className="text-[9px] text-emerald-mint">{(newPropShareA / 100).toFixed(0)}%</span>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-silver block">Member B (bp)</label>
+                    <input
+                      type="number"
+                      value={newPropShareB}
+                      onChange={(e) => setNewPropShareB(Number(e.target.value))}
+                      className="w-full px-2 py-1 bg-obsidian border border-border-slate text-white text-xs rounded font-mono"
+                    />
+                    <span className="text-[9px] text-emerald-mint">{(newPropShareB / 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-emerald-mint hover:bg-opacity-90 text-obsidian font-bold rounded-md shadow transition-all cursor-pointer text-xs mt-2"
+                >
+                  🗳️ Submit Proposal for Voting
+                </button>
+              </form>
+            </div>
+
+            {/* Proposals List */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-bold text-white">Active Squad Proposals</h3>
+                <span className="text-xs text-muted-silver">{proposals.length} Proposals</span>
+              </div>
+
+              <div className="space-y-3">
+                {proposals.map((prop) => {
+                  const isFullySigned = prop.signedBy.length >= prop.requiredSignatures;
+                  return (
+                    <div key={prop.id} className="bg-slate-layer/50 border border-border-slate rounded-xl p-5 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-emerald-mint">{prop.id}</span>
+                            <h4 className="text-sm font-bold text-white">{prop.title}</h4>
+                          </div>
+                          <p className="text-xs text-muted-silver mt-1">{prop.description}</p>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
+                            isFullySigned || prop.status === "executed"
+                              ? "bg-emerald-mint/20 text-emerald-mint border border-emerald-mint/40"
+                              : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                          }`}
+                        >
+                          {isFullySigned || prop.status === "executed" ? "✓ Approved & Executed" : "🗳️ Voting in Progress"}
+                        </span>
+                      </div>
+
+                      {/* Share Breakdown */}
+                      <div className="grid grid-cols-2 gap-2 bg-obsidian p-3 rounded-lg border border-border-slate/50 text-xs">
+                        {prop.proposedShares.map((s, idx) => (
+                          <div key={idx} className="flex justify-between">
+                            <span className="font-mono text-muted-silver text-[11px]">
+                              {s.recipient.slice(0, 6)}...{s.recipient.slice(-6)}
+                            </span>
+                            <span className="font-bold text-emerald-mint">{(s.basisPoints / 100).toFixed(0)}%</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Signatures Progress */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-2 border-t border-border-slate/50 text-xs">
+                        <span className="text-muted-silver">
+                          Signatures: <strong className="text-white">{prop.signedBy.length} / {prop.requiredSignatures} Signatures</strong>
+                        </span>
+
+                        {!isFullySigned && prop.status !== "executed" && (
+                          <button
+                            onClick={() => handleSignProposal(prop.id)}
+                            className="px-4 py-1.5 bg-emerald-mint hover:bg-opacity-90 text-obsidian font-bold rounded text-xs transition-all cursor-pointer"
+                          >
+                            ✍️ Sign & Approve Proposal
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              {successTxHash && (
-                <a
-                  href={`https://stellar.expert/explorer/testnet/tx/${successTxHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-2.5 bg-obsidian border border-border-slate text-center block rounded-md text-xs font-semibold text-white hover:border-emerald-mint hover:text-emerald-mint transition-all"
-                >
-                  Inspect on Stellar.expert &rarr;
-                </a>
-              )}
-              
-              <button
-                onClick={() => setShowSuccessModal(false)}
-                className="w-full py-2.5 bg-emerald-mint hover:bg-opacity-90 text-center rounded-md text-xs font-bold text-obsidian shadow-lg shadow-emerald-mint/10 transition-all cursor-pointer"
-              >
-                Close Receipt
-              </button>
-            </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 5: ADMIN PANEL */}
+      {activeTab === "admin" && (
+        <div className="space-y-6">
+          {!isAdminAuthenticated ? (
+            <div className="max-w-md mx-auto bg-slate-layer/60 p-8 rounded-xl border border-border-slate space-y-6 shadow-2xl">
+              <div className="text-center space-y-1">
+                <h3 className="text-lg font-bold text-white">Admin Authentication</h3>
+                <p className="text-xs text-muted-silver">Authorized personnel only. Enter credentials to unlock administrative controls.</p>
+              </div>
+
+              {adminAuthError && (
+                <div className="p-3 bg-muted-crimson/10 border border-muted-crimson/30 rounded text-xs text-muted-crimson">
+                  {adminAuthError}
+                </div>
+              )}
+
+              <form onSubmit={handleAdminLogin} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-silver font-semibold block">Username</label>
+                  <input
+                    type="text"
+                    value={adminUsernameInput}
+                    onChange={(e) => setAdminUsernameInput(e.target.value)}
+                    placeholder="admin"
+                    className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-silver font-semibold block">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showAdminPassword ? "text" : "password"}
+                      value={adminPasswordInput}
+                      onChange={(e) => setAdminPasswordInput(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3 py-2 bg-obsidian border border-border-slate text-white text-xs rounded focus:outline-none focus:ring-1 focus:ring-emerald-mint"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPassword(!showAdminPassword)}
+                      className="absolute right-2.5 top-2 text-[10px] text-muted-silver hover:text-white"
+                    >
+                      {showAdminPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-emerald-mint hover:bg-opacity-90 text-obsidian font-bold rounded-md shadow transition-all cursor-pointer text-xs"
+                >
+                  Unlock Admin Portal
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-slate-layer/40 p-4 rounded-xl border border-border-slate">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-mint"></span>
+                  <span className="text-xs font-bold text-white">Admin Session Active</span>
+                </div>
+                <button
+                  onClick={handleAdminLogout}
+                  className="px-3 py-1 bg-obsidian border border-border-slate hover:border-muted-crimson text-xs text-muted-crimson rounded transition-all cursor-pointer"
+                >
+                  Lock Portal (Logout)
+                </button>
+              </div>
+
+              {/* Health Scanner & Telemetry */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-slate-layer/40 p-6 rounded-xl border border-border-slate space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Recipient Trustline Scanner</h4>
+                  <p className="text-xs text-muted-silver">Scans connected recipient addresses to verify active SAC trustlines.</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs p-2.5 bg-obsidian rounded border border-border-slate/50">
+                      <span className="font-mono text-white text-[11px]">GDUW6X2R...4R62SPLT</span>
+                      <span className="text-[10px] text-emerald-mint font-bold">✓ TRUSTLINE ACTIVE</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs p-2.5 bg-obsidian rounded border border-border-slate/50">
+                      <span className="font-mono text-white text-[11px]">GAZ7XLP4...6G6SPLT</span>
+                      <span className="text-[10px] text-emerald-mint font-bold">✓ TRUSTLINE ACTIVE</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-layer/40 p-6 rounded-xl border border-border-slate space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">Audit Data Export</h4>
+                  <p className="text-xs text-muted-silver">Download complete on-chain split telemetry and verified feedback records.</p>
+                  <div className="flex gap-3 pt-2">
+                    <a
+                      href="/onboarding_responses.csv"
+                      download
+                      className="px-3 py-2 bg-obsidian border border-border-slate hover:border-emerald-mint text-xs text-white rounded transition-all"
+                    >
+                      📥 Export 50 Users CSV
+                    </a>
+                    <a
+                      href="/onboarding_responses.xlsx"
+                      download
+                      className="px-3 py-2 bg-obsidian border border-border-slate hover:border-emerald-mint text-xs text-white rounded transition-all"
+                    >
+                      📥 Export 50 Users XLSX
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Raw XDR & Tx Hash Diagnostics Layer */}
+      {(rawXdr || txHash) && (
+        <div className="bg-obsidian border border-border-slate rounded-xl p-5 space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-silver">On-Chain Ledger Receipts</h4>
+          {txHash && (
+            <div className="text-xs space-y-1">
+              <span className="text-muted-silver block">Transaction Hash:</span>
+              <a
+                href={`https://stellar.expert/explorer/testnet/tx/${txHash}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-emerald-mint hover:underline break-all block"
+              >
+                {txHash}
+              </a>
+            </div>
+          )}
+          {rawXdr && (
+            <details className="text-xs text-muted-silver">
+              <summary className="cursor-pointer hover:text-white">View Raw Transaction Envelope XDR</summary>
+              <pre className="mt-2 p-3 bg-slate-layer/60 rounded font-mono text-[10px] text-muted-silver overflow-x-auto whitespace-pre-wrap break-all">
+                {rawXdr}
+              </pre>
+            </details>
+          )}
         </div>
       )}
     </div>
