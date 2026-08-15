@@ -444,12 +444,21 @@ export default function Dashboard() {
     <div className="space-y-8">
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-layer/60 p-6 rounded-xl border border-border-slate backdrop-blur-sm shadow-xl">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-mint animate-pulse"></span>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white">SPLITSYNC</h1>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo.jpg"
+            alt="SplitSync Logo"
+            className="w-10 h-10 rounded-lg object-cover border border-emerald-mint/40 shadow-md shadow-emerald-mint/20"
+          />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-extrabold tracking-tight text-white">SPLITSYNC</h1>
+              <span className="text-[10px] font-bold bg-emerald-mint/20 text-emerald-mint px-2 py-0.5 rounded-full border border-emerald-mint/40">
+                Mainnet & Testnet
+              </span>
+            </div>
+            <p className="text-xs text-muted-silver mt-0.5">Automated Zero-Dust Revenue Splitter on Stellar Soroban</p>
           </div>
-          <p className="text-xs text-muted-silver mt-1">Automated Zero-Dust Revenue Splitter on Stellar Soroban</p>
         </div>
 
         <div className="flex items-center gap-3">

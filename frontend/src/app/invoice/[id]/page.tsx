@@ -141,12 +141,16 @@ export default function InvoiceCheckoutPage() {
         <div className="bg-slate-layer/80 border border-border-slate rounded-xl p-6 sm:p-8 space-y-8 shadow-2xl backdrop-blur-sm">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border-slate">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-mint"></span>
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo.jpg"
+                alt="SplitSync Logo"
+                className="w-10 h-10 rounded-lg object-cover border border-emerald-mint/40 shadow-md shadow-emerald-mint/20"
+              />
+              <div>
                 <h1 className="text-xl font-bold tracking-tight text-white">SPLITSYNC INVOICE</h1>
+                <p className="text-xs text-muted-silver mt-0.5">Automated On-Chain Split Payment Gateway</p>
               </div>
-              <p className="text-xs text-muted-silver mt-1">Automated On-Chain Split Payment Gateway</p>
             </div>
             <div className="text-left sm:text-right">
               <span className="font-mono text-sm font-bold text-emerald-mint block">{invoice.id}</span>
