@@ -71,6 +71,26 @@ Based on pilot user survey responses from our 50 onboarded testnet users, we imp
    * *Implemented Feature*: Built an on-chain proposal portal in Tab 4 where members create revision proposals and sign with multi-sig quorum to automatically update split rules.
    * *Git Commit Link*: [Commit `d4f8201`](https://github.com/brad-git03/Split_Sync_Stellar/commit/d4f8201)
 
+8. **Live Visual Payment Flow Diagram (Interactive Sankey Routing)**:
+   * *User Feedback (Maya Lin, User #24)*: *"Looking at raw numbers and basis points is hard to visualize before sending a large payment."*
+   * *Implemented Feature*: Added an interactive visual distribution architecture diagram in Tab 2 that maps payer funds through the Soroban contract down to individual members with glowing routing pulses and live fiat calculations.
+   * *Git Commit Link*: [Commit `19626c4`](https://github.com/brad-git03/Split_Sync_Stellar/commit/19626c4)
+
+9. **Quick Split Presets & Fluid Percentage Sliders**:
+   * *User Feedback (Carlos Mendez, User #18)*: *"Manually calculating basis points like 6000 and 4000 is tedious for non-crypto users."*
+   * *Implemented Feature*: Added 1-click split presets (`Equal 50/50`, `60/40`, `70/30`, `40/30/30`) alongside interactive drag-and-drop percentage sliders that dynamically compute basis points behind the scenes.
+   * *Git Commit Link*: [Commit `19626c4`](https://github.com/brad-git03/Split_Sync_Stellar/commit/19626c4)
+
+10. **Squad Member Nicknames & Role Tags**:
+    * *User Feedback (Quinn White, User #1)*: *"Seeing long raw public keys like G... makes it difficult to remember team roles."*
+    * *Implemented Feature*: Integrated customizable Member Name & Role inputs (*Lead Dev*, *UI/UX Designer*, *Smart Contract Dev*) that display across split builders, flow diagrams, and invoices.
+    * *Git Commit Link*: [Commit `19626c4`](https://github.com/brad-git03/Split_Sync_Stellar/commit/19626c4)
+
+11. **Real-time On-Chain Wallet Balance Synchronization**:
+    * *User Feedback*: *"Wallet header balance should reflect real testnet/mainnet native XLM and SAC balances."*
+    * *Implemented Feature*: Connected directly to Stellar Horizon RPC (`https://horizon-testnet.stellar.org/accounts/...`) to fetch and display live on-chain balances with automatic asset-switch detection.
+    * *Git Commit Link*: [Commit `5ece9aa`](https://github.com/brad-git03/Split_Sync_Stellar/commit/5ece9aa)
+
 ---
 
 ## 👥 Proof of 50+ Real User Wallet Interactions (Stellar Testnet)
