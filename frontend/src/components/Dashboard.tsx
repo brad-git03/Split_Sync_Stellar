@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useStellarWallet } from "@/hooks/useStellarWallet";
-import { prepareInitTx, preparePayTx, submitTx, getTokenBalance, formatTokenAmount, CONTRACT_ID } from "@/utils/soroban";
+import { prepareInitTx, preparePayTx, submitTx, getTokenBalance, getRealAccountBalance, formatTokenAmount, CONTRACT_ID } from "@/utils/soroban";
 import { validateStellarAddress, validateContractAddress } from "@/utils/validation";
 
 interface ShareInput {
@@ -222,21 +222,22 @@ export default function Dashboard() {
   }, []);
 
   // Sync wallet address to sender
+  // Sync wallet address and fetch real on-chain balance
   useEffect(() => {
     if (address) {
       setSenderAddress(address);
-      fetchBalance(address);
+      fetchBalance(address, selectedToken);
     }
-  }, [address]);
+  }, [address, selectedToken]);
 
-  const fetchBalance = async (targetAddr: string) => {
+  const fetchBalance = async (targetAddr: string, token: string = selectedToken) => {
     setBalanceLoading(true);
     try {
-      const bal = await getTokenBalance(CONTRACT_ID, targetAddr);
-      setTokenBalance(bal || "0");
+      const res = await getRealAccountBalance(targetAddr, token);
+      setTokenBalance(res.display);
     } catch (e) {
       console.error(e);
-      setTokenBalance(null);
+      setTokenBalance("0.00 XLM");
     } finally {
       setBalanceLoading(false);
     }
@@ -456,8 +457,8 @@ export default function Dashboard() {
             <div className="text-right">
               <div className="text-xs text-muted-silver">Connected Account</div>
               <div className="font-mono text-sm text-emerald-mint">{truncatedAddress}</div>
-              <div className="text-[10px] text-muted-silver mt-0.5">
-                {balanceLoading ? "Loading balance..." : tokenBalance !== null ? `Balance: ${formatTokenAmount(tokenBalance)}` : ""}
+              <div className="text-[10px] text-emerald-mint font-semibold mt-0.5">
+                {balanceLoading ? "Loading balance..." : tokenBalance !== null ? `Balance: ${tokenBalance}` : ""}
               </div>
             </div>
           )}

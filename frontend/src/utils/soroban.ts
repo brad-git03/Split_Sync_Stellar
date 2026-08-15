@@ -202,6 +202,46 @@ export async function getTokenBalance(
   }
 }
 
+export async function getRealAccountBalance(
+  userAddress: string,
+  preferredAsset: string = "XLM"
+): Promise<{ xlm: string; usdc: string; display: string }> {
+  try {
+    const cleanAddr = userAddress.trim();
+    if (!cleanAddr) return { xlm: "0.00", usdc: "0.00", display: "0.00 XLM" };
+
+    const res = await fetch(`https://horizon-testnet.stellar.org/accounts/${cleanAddr}`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { xlm: "0.00", usdc: "0.00", display: "0.00 XLM (Unfunded)" };
+      }
+      throw new Error(`Horizon status: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const balances = data.balances || [];
+
+    let xlmBal = "0.00";
+    let usdcBal = "0.00";
+
+    for (const b of balances) {
+      if (b.asset_type === "native") {
+        const num = parseFloat(b.balance || "0");
+        xlmBal = num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+      } else if (b.asset_code === "USDC") {
+        const num = parseFloat(b.balance || "0");
+        usdcBal = num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+    }
+
+    const display = preferredAsset === "USDC" ? `${usdcBal} USDC` : `${xlmBal} XLM`;
+    return { xlm: xlmBal, usdc: usdcBal, display };
+  } catch (err) {
+    console.error("Failed to query Horizon for real wallet balance:", err);
+    return { xlm: "0.00", usdc: "0.00", display: "0.00 XLM" };
+  }
+}
+
 export { formatTokenAmount } from "./format";
 
 
