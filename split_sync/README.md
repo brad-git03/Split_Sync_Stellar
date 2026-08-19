@@ -19,14 +19,14 @@
 * **PUBLIC GOOGLE SHEETS RESPONSES:** [SplitSync Onboarding Responses (Google Sheets)](https://docs.google.com/spreadsheets/d/1wk3purksBoem2jGBLHgHoB1c_fJrlnJXI8lg1unC0aU/edit?usp=sharing)
 * **LOCAL EXCEL/CSV DATASET:** [../docs/user_feedback_responses.csv](../docs/user_feedback_responses.csv) | [../docs/user_feedback_responses.xlsx](../docs/user_feedback_responses.xlsx)
 * **LAUNCH USERS & VERIFICATION RECORDS:** [../LAUNCH_USERS.md](../LAUNCH_USERS.md) | [../docs/LAUNCH_USERS.md](../docs/LAUNCH_USERS.md)
-* **PITCH DECK / PRESENTATION:** [../docs/SplitSync_Pitch_Deck.md](../docs/SplitSync_Pitch_Deck.md)
+* **PITCH DECK / PRESENTATION (PPT):** [../docs/SplitSync_Pitch_Deck.md](../docs/SplitSync_Pitch_Deck.md)
+* **VIDEO DEMO & WALKTHROUGH SCRIPT:** [../docs/Twitter_Launch_Thread.md](../docs/Twitter_Launch_Thread.md)
 * **FOUNDER MONTHLY GROWTH REPORT (LEVEL 7):** [../docs/Monthly_Growth_Report.md](../docs/Monthly_Growth_Report.md)
 * **SOCIAL MEDIA GROWTH KIT & PRODUCT POSTS:** [../docs/Social_Media_Growth_Kit.md](../docs/Social_Media_Growth_Kit.md)
 * **SMART CONTRACT SECURITY AUDIT:** [../docs/SplitSync_Security_Audit.md](../docs/SplitSync_Security_Audit.md)
 * **ECOSYSTEM TECHNICAL TUTORIAL:** [../docs/SplitSync_Developer_Tutorial.md](../docs/SplitSync_Developer_Tutorial.md)
-* **MAINNET DEPLOYMENT GUIDE (LEVEL 6/7):** [../docs/Mainnet_Deployment_Guide.md](../docs/Mainnet_Deployment_Guide.md)
+* **MAINNET DEPLOYMENT GUIDE:** [../docs/Mainnet_Deployment_Guide.md](../docs/Mainnet_Deployment_Guide.md)
 * **MAINNET TRANSACTION RECORDS:** [../docs/mainnet_payment_transactions.json](../docs/mainnet_payment_transactions.json)
-* **VIDEO DEMO & WALKTHROUGH SCRIPT:** [../docs/Twitter_Launch_Thread.md](../docs/Twitter_Launch_Thread.md)
 * **ADVANCED FEATURE (BLACK BELT - LEVEL 6):** [Gasless Fee Sponsorship Service](../frontend/src/components/Dashboard.tsx)
 * **LEVEL 5 FEATURE COMMIT (Pre-flight Split Estimator):** [Commit `0deaafb`](https://github.com/brad-git03/Split_Sync_Stellar/commit/0deaafbd5c23de67a3f3aefcf27e4e13deefc432)
 * **LEVEL 6 FEATURE COMMIT (Gasless Fee Sponsorship):** [Commit `ceb2a67`](https://github.com/brad-git03/Split_Sync_Stellar/commit/ceb2a67)
@@ -34,6 +34,25 @@
 * **UX & USABILITY UPGRADE COMMIT (Flow Diagram, Presets, Roles):** [Commit `19626c4`](https://github.com/brad-git03/Split_Sync_Stellar/commit/19626c4)
 * **SOROBAN CONTRACT ID:** `CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI`
 * **CONTRACT EXPLORER:** [stellar.expert/explorer/testnet/contract/CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI](https://stellar.expert/explorer/testnet/contract/CA7SDEPQEIQZBA6VVTSLB4NTBKAW2CGSIRTKGK66XHK4W5PPN43DRLPI)
+
+---
+
+## 📸 Product Screenshots & Analytics Proofs
+
+### 1. SplitSync dApp Dashboard & Multi-Token FX Engine
+![SplitSync Dashboard](docs/screenshots/dashboard.png)
+
+*Figure 1: SplitSync Dashboard featuring connected Freighter wallet, live on-chain balance fetching, quick split presets, and real-time fiat FX conversion (PHP ₱, USD $, EUR €).*
+
+### 2. Smart Contract Explorer & On-Chain Proof
+![StellarExpert Contract Explorer](docs/screenshots/contract_explorer.png)
+
+*Figure 2: Live StellarExpert Testnet Explorer verifying active Soroban smart contract WASM deployment (`CA7SDEPQ...`) and recent on-chain split executions (`init`, `pay`).*
+
+### 3. Vercel Production Analytics & Real-Time Telemetry
+![Vercel Production Analytics](docs/screenshots/vercel_analytics.png)
+
+*Figure 3: Production monitoring dashboard on Vercel tracking real-time HTTP 200 telemetry, active dApp routes (`/`, `/dashboard`, `/invoice/[id]`), and system uptime.*
 
 ---
 
@@ -95,6 +114,22 @@ Based on pilot user survey responses from our 50 onboarded users, we implemented
     * *User Feedback*: *"Wallet header balance should reflect real testnet/mainnet native XLM and SAC balances."*
     * *Implemented Feature*: Connected directly to Stellar Horizon RPC (`https://horizon-testnet.stellar.org/accounts/...`) to fetch and display live on-chain balances with automatic asset-switch detection.
     * *Git Commit Link*: [Commit `5ece9aa`](https://github.com/brad-git03/Split_Sync_Stellar/commit/5ece9aa)
+
+---
+
+## 🗺️ Next Phase Evolution & Future Roadmap (Feedback-Driven)
+
+Based on qualitative feedback collected from our 50 pilot freelance collectives and DAO contractors:
+
+1. **Phase 1: Recurring Retainer & Streaming Splits (Q3 2026)**
+   * *User Request:* Enable DAOs to set up recurring monthly client retainers that auto-split to squad members on the 1st of every month without manual re-signing.
+   * *Planned Architecture:* Integration with Stellar SAC periodic allowances and pre-authorized pull sequences.
+2. **Phase 2: Milestone Escrow & Dispute Resolution (Q4 2026)**
+   * *User Request:* Milestone-based lockups where client funds are held in trust until deliverables are approved.
+   * *Planned Architecture:* 2-stage Soroban milestone escrow with multi-sig release and emergency mediation time-locks.
+3. **Phase 3: Automated Tax & 1099/Invoice Accounting PDF Exporters (Q1 2027)**
+   * *User Request:* End-of-year tax statements showing historical fiat valuation at execution block time.
+   * *Planned Architecture:* Client-side PDF/CSV generator integrating historical Horizon FX price points.
 
 ---
 
