@@ -27,6 +27,7 @@
 * **ECOSYSTEM TECHNICAL TUTORIAL:** [docs/SplitSync_Developer_Tutorial.md](docs/SplitSync_Developer_Tutorial.md)
 * **MAINNET DEPLOYMENT GUIDE:** [docs/Mainnet_Deployment_Guide.md](docs/Mainnet_Deployment_Guide.md)
 * **MAINNET TRANSACTION RECORDS:** [docs/mainnet_payment_transactions.json](docs/mainnet_payment_transactions.json)
+* **LIVE ON-CHAIN LANDING FEED:** [frontend/src/components/LiveActivityFeed.tsx](frontend/src/components/LiveActivityFeed.tsx)
 * **ADVANCED FEATURE (BLACK BELT - LEVEL 6):** [Gasless Fee Sponsorship Service](frontend/src/components/Dashboard.tsx)
 * **LEVEL 5 FEATURE COMMIT (Pre-flight Split Estimator):** [Commit `0deaafb`](https://github.com/brad-git03/Split_Sync_Stellar/commit/0deaafbd5c23de67a3f3aefcf27e4e13deefc432)
 * **LEVEL 6 FEATURE COMMIT (Gasless Fee Sponsorship):** [Commit `ceb2a67`](https://github.com/brad-git03/Split_Sync_Stellar/commit/ceb2a67)

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import LiveActivityFeed from "../components/LiveActivityFeed";
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -252,6 +253,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      
+      {/* Live On-Chain Settlement Activity Stream */}
+      <LiveActivityFeed />
 
       {/* Features Section */}
       <section id="features" className="py-24 border-t border-border-slate/40 relative">
