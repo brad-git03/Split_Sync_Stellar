@@ -49,10 +49,10 @@
 
 *Figure 2: Live StellarExpert Testnet Explorer verifying active Soroban smart contract WASM deployment (`CA7SDEPQ...`) and recent on-chain split executions (`init`, `pay`).*
 
-### 3. Vercel Production Analytics & Real-Time Telemetry
-![Vercel Production Analytics](docs/screenshots/vercel_analytics.png)
+### 3. Automated CI/CD Pipeline & Vercel Production Deployment Success
+![Automated CI/CD Pipeline & Vercel Deployment](docs/screenshots/cicd_vercel_pipeline.png)
 
-*Figure 3: Production monitoring dashboard on Vercel tracking real-time HTTP 200 telemetry, active dApp routes (`/`, `/dashboard`, `/invoice/[id]`), and system uptime.*
+*Figure 3: GitHub Actions Automated CI/CD Pipeline verifying frontend build/tests, Soroban smart contract build/tests, and production deployment succession on Vercel.*
 
 ---
 
