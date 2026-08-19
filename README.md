@@ -18,6 +18,7 @@
 * **USER ONBOARDING GOOGLE FORM:** [SplitSync User Onboarding & Feedback Form](https://docs.google.com/forms/d/e/1FAIpQLSew_Dk6XX_yJd9vUFFIAF8iMaaf83nh584NKM2ei7lJc1fF-g/viewform)
 * **PUBLIC GOOGLE SHEETS RESPONSES:** [SplitSync Onboarding Responses (Google Sheets)](https://docs.google.com/spreadsheets/d/1wk3purksBoem2jGBLHgHoB1c_fJrlnJXI8lg1unC0aU/edit?usp=sharing)
 * **LOCAL EXCEL/CSV DATASET:** [docs/user_feedback_responses.csv](docs/user_feedback_responses.csv) | [docs/user_feedback_responses.xlsx](docs/user_feedback_responses.xlsx)
+* **LAUNCH USERS & VERIFICATION RECORDS:** [LAUNCH_USERS.md](LAUNCH_USERS.md) | [docs/LAUNCH_USERS.md](docs/LAUNCH_USERS.md)
 * **PITCH DECK / PRESENTATION:** [docs/SplitSync_Pitch_Deck.md](docs/SplitSync_Pitch_Deck.md)
 * **FOUNDER MONTHLY GROWTH REPORT (LEVEL 7):** [docs/Monthly_Growth_Report.md](docs/Monthly_Growth_Report.md)
 * **SOCIAL MEDIA GROWTH KIT & PRODUCT POSTS:** [docs/Social_Media_Growth_Kit.md](docs/Social_Media_Growth_Kit.md)
