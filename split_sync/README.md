@@ -37,22 +37,42 @@
 
 ---
 
-## 📸 Product Screenshots & Analytics Proofs
+## 📸 Product Screenshots & Visual Walkthrough Gallery
 
 ### 1. SplitSync dApp Dashboard & Multi-Token FX Engine
-![SplitSync Dashboard](docs/screenshots/dashboard.png)
+![SplitSync Dashboard](../docs/screenshots/dashboard.png)
 
-*Figure 1: SplitSync Dashboard featuring connected Freighter wallet, live on-chain balance fetching, quick split presets, and real-time fiat FX conversion (PHP ₱, USD $, EUR €).*
+*Figure 1: SplitSync Dashboard featuring active freelance collectives, allocation analytics, and real-time fiat FX conversion.*
 
-### 2. Smart Contract Explorer & On-Chain Proof
-![StellarExpert Contract Explorer](docs/screenshots/contract_explorer.png)
+### 2. Freighter Wallet Connection & Account Header
+![Freighter Wallet Connection](../docs/screenshots/wallet_display.png)
 
-*Figure 2: Live StellarExpert Testnet Explorer verifying active Soroban smart contract WASM deployment (`CA7SDEPQ...`) and recent on-chain split executions (`init`, `pay`).*
+*Figure 2: Seamless non-custodial Freighter wallet connection displaying user public key and disconnect controls.*
 
-### 3. Automated CI/CD Pipeline & Vercel Production Deployment Success
+### 3. Real-Time On-Chain Balance Fetching & Multi-Asset Display
+![Live On-Chain Balance Display](../docs/screenshots/balance_display.png)
+
+*Figure 3: Live balance synchronization querying Stellar Horizon RPC directly to display accurate native XLM and SAC token holdings.*
+
+### 4. Interactive On-Chain Settlement & Split Execution on Testnet
+![Testnet Settlement Success](../docs/screenshots/test_netsucess.png)
+
+*Figure 4: Successful atomic revenue split execution on Stellar Testnet showing instant status feedback and transaction hash.*
+
+### 5. Transaction Confirmation, Diagnostics & Raw XDR Receipt
+![Transaction Confirmation Display](../docs/screenshots/sucess_display.png)
+
+*Figure 5: Post-execution diagnostic panel showing verified transaction hash, direct StellarExpert explorer link, and raw envelope XDR.*
+
+### 6. Smart Contract Explorer & On-Chain Proof
+![StellarExpert Contract Explorer](../docs/screenshots/contract_explorer.png)
+
+*Figure 6: Live StellarExpert Testnet Explorer verifying active Soroban smart contract WASM deployment (`CA7SDEPQ...`) and recent on-chain split executions (`init`, `pay`).*
+
+### 7. Automated CI/CD Pipeline & Vercel Production Deployment Success
 ![Automated CI/CD Pipeline & Vercel Deployment](../docs/screenshots/cicd_vercel_pipeline.png)
 
-*Figure 3: GitHub Actions Automated CI/CD Pipeline verifying frontend build/tests, Soroban smart contract build/tests, and production deployment succession on Vercel.*
+*Figure 7: GitHub Actions Automated CI/CD Pipeline verifying frontend build/tests, Soroban smart contract build/tests, and production deployment succession on Vercel.*
 
 ---
 
