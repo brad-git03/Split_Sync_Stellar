@@ -75,11 +75,6 @@
 
 *Figure 7: GitHub Actions Automated CI/CD Pipeline verifying frontend build/tests, Soroban smart contract build/tests, and production deployment succession on Vercel.*
 
-### 8. Mobile-First Responsive Experience
-![Mobile Responsive UI](docs/screenshots/mobile_view.png)
-
-*Figure 8: Mobile responsive interface optimized for on-the-go freelancers and DAO contributors.*
-
 ---
 
 ## 🟡 Level 2 (Yellow Belt) Verification & Deliverables
@@ -103,7 +98,7 @@
   * **Event Streaming & Real-Time Updates**: Home page [`LiveActivityFeed.tsx`](frontend/src/components/LiveActivityFeed.tsx) and live balance polling from Stellar Horizon RPC.
 * **Automated CI/CD Pipeline**: GitHub Actions workflow running tests on push/pull requests (`.github/workflows/deploy.yml`).
 * **Automated Unit Test Suites**: **22 / 22 Passing Tests (100% Pass Rate)** across `features.test.ts`, `utils.test.ts`, `validation.test.ts`, and `feeSponsorship.test.ts`.
-* **Mobile-First Responsive Layout**: Optimized with fluid grids, touch targets, and collapsible navigation (Figure 8).
+* **Mobile-First Responsive Layout**: Built with fluid Tailwind grids, touch-friendly UI components, and mobile drawer navigation.
 * **Demo Walkthrough Script**: [`docs/Twitter_Launch_Thread.md`](docs/Twitter_Launch_Thread.md).
 
 ---
