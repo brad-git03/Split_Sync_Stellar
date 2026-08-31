@@ -44,7 +44,7 @@ export default function LandingPage() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-silver">
-            <Link href="#" className="text-white hover:text-white transition-colors">
+            <Link href="/" className="text-white hover:text-white transition-colors">
               Home
             </Link>
             <a href="#how-it-works" className="hover:text-white transition-colors">
@@ -53,6 +53,10 @@ export default function LandingPage() {
             <a href="#features" className="hover:text-white transition-colors">
               Features
             </a>
+            <Link href="/docs" className="text-emerald-mint hover:text-emerald-300 font-semibold transition-colors flex items-center gap-1">
+              <span>Docs</span>
+              <span className="text-[10px] font-mono bg-emerald-mint/20 text-emerald-mint px-1.5 py-0.2 rounded">v1.0</span>
+            </Link>
             <a href="#about" className="hover:text-white transition-colors">
               About
             </a>
@@ -91,7 +95,7 @@ export default function LandingPage() {
           <div className="md:hidden absolute top-full left-0 right-0 bg-slate-layer border-b border-border-slate p-6 space-y-4 shadow-2xl animate-in slide-in-from-top-5 duration-200">
             <div className="flex flex-col gap-4 text-sm font-medium text-muted-silver">
               <Link
-                href="#"
+                href="/"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="text-white hover:text-white py-1 transition-colors"
               >
@@ -111,6 +115,13 @@ export default function LandingPage() {
               >
                 Features
               </a>
+              <Link
+                href="/docs"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-emerald-mint hover:text-emerald-300 font-semibold py-1 transition-colors flex items-center gap-1.5"
+              >
+                <span>📖 Documentation</span>
+              </Link>
               <a
                 href="#about"
                 onClick={() => setIsMobileMenuOpen(false)}

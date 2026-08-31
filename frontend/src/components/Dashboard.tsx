@@ -487,6 +487,13 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/docs"
+            className="px-3.5 py-2 border border-border-slate hover:border-emerald-mint/60 bg-obsidian text-xs font-semibold text-muted-silver hover:text-white rounded-md transition-all flex items-center gap-1.5"
+          >
+            <span>📖 Docs</span>
+          </Link>
+
           {status === "connected" && (
             <div className="text-right">
               <div className="text-xs text-muted-silver">Connected Account</div>

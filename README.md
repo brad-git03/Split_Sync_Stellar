@@ -12,6 +12,7 @@
 ---
 
 ## 🌐 Production Deployment & Master Submission Index
+* **📖 DEDICATED DOCUMENTATION WEBSITE (LEVEL 7):** [https://splitsync-stellar.vercel.app/docs](https://splitsync-stellar.vercel.app/docs) *(Live Interactive Docs Portal)*
 * **LIVE MVP DEMO:** [https://splitsync-stellar.vercel.app/](https://splitsync-stellar.vercel.app/)
 * **GITHUB REPOSITORY:** [https://github.com/brad-git03/Split_Sync_Stellar](https://github.com/brad-git03/Split_Sync_Stellar)
 * **OFFICIAL TWITTER / X PROFILE:** [https://x.com/splitsyncmain](https://x.com/splitsyncmain)
@@ -230,6 +231,8 @@ SplitSync is designed as a sustainable Web3 business on Stellar. Complete metric
   * *Starter Tier:* 0.25% protocol fee for standard freelance splits.
   * *Pro Squads ($19/mo):* Gasless fee sponsorship, dynamic share renegotiation proposals, itemized client invoicing, and accounting CSV/PDF export.
 * **Official Social Media Channel:** [https://x.com/splitsyncmain](https://x.com/splitsyncmain) (Social Growth Strategy in [docs/Social_Media_Growth_Kit.md](docs/Social_Media_Growth_Kit.md)).
+* **Dedicated Public Documentation Website:** [https://splitsync-stellar.vercel.app/docs](https://splitsync-stellar.vercel.app/docs)
+  * Complete developer & user documentation portal featuring Mintlify/Stripe-style navigation, interactive zero-dust mathematical proofs, feature breakdowns, Soroban Rust contract code references, setup walkthroughs, and automated test outputs.
 
 ---
 
