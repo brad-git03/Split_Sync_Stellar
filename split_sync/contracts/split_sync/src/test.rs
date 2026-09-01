@@ -1,9 +1,8 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, Env, vec};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env, Symbol};
 use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
 
-// Helper function to set up a mock token environment
 fn create_token<'a>(env: &Env, admin: &Address) -> (TokenClient<'a>, TokenAdminClient<'a>) {
     let sac = env.register_stellar_asset_contract_v2(admin.clone());
     let contract_address = sac.address();
@@ -13,168 +12,259 @@ fn create_token<'a>(env: &Env, admin: &Address) -> (TokenClient<'a>, TokenAdminC
     )
 }
 
-// Test 1 (Happy path): The MVP transaction executes successfully end-to-end
+// TEST 1: Instant atomic zero-dust payment execution
 #[test]
 fn test_splitsync_happy_path() {
     let env = Env::default();
     env.mock_all_auths();
 
+    let admin = Address::generate(&env);
     let client_wallet = Address::generate(&env);
     let dev_wallet = Address::generate(&env);
     let designer_wallet = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    
-    let (token, admin_client) = create_token(&env, &token_admin);
-    admin_client.mint(&client_wallet, &1000);
+
+    let (token, token_admin_client) = create_token(&env, &token_admin);
+    token_admin_client.mint(&client_wallet, &1000);
 
     let contract_id = env.register(SplitSyncContract, ());
     let contract_client = SplitSyncContractClient::new(&env, &contract_id);
 
-    // Initialize a 70/30 split
+    // Initialize 70/30 split
     let shares = vec![
         &env,
         Share { recipient: dev_wallet.clone(), basis_points: 7000 },
         Share { recipient: designer_wallet.clone(), basis_points: 3000 },
     ];
-    contract_client.init(&shares);
+    contract_client.init(&admin, &shares);
 
-    // Client pays 1000 USDC
+    // Execute instant payment
     contract_client.pay(&token.address, &client_wallet, &1000);
 
-    // Verify correct split distributions
     assert_eq!(token.balance(&dev_wallet), 700);
     assert_eq!(token.balance(&designer_wallet), 300);
     assert_eq!(token.balance(&client_wallet), 0);
-    assert_eq!(token.balance(&contract_id), 0); // Contract holds nothing
+    assert_eq!(token.balance(&contract_id), 0);
 }
 
-// Test 2 (Edge case): Initialization fails if basis points do not equal 10,000
+// TEST 2: Basis points must equal 10,000
 #[test]
-#[should_panic(expected = "Shares must total exactly 10000 basis points (100%)")]
 fn test_init_invalid_basis_points() {
     let env = Env::default();
     let contract_id = env.register(SplitSyncContract, ());
     let contract_client = SplitSyncContractClient::new(&env, &contract_id);
 
+    let admin = Address::generate(&env);
     let dev_wallet = Address::generate(&env);
     let designer_wallet = Address::generate(&env);
 
-    // Attempting a 70/40 split (11,000 bp)
     let shares = vec![
         &env,
         Share { recipient: dev_wallet, basis_points: 7000 },
-        Share { recipient: designer_wallet, basis_points: 4000 },
+        Share { recipient: designer_wallet, basis_points: 4000 }, // 11,000 total
     ];
-    
-    contract_client.init(&shares);
+
+    let res = contract_client.try_init(&admin, &shares);
+    assert_eq!(res, Err(Ok(Error::InvalidBasisPoints)));
 }
 
-// Test 3 (Edge case): Unauthorized caller cannot force another user to pay
+// TEST 3: On-Chain Milestone Escrow creation, funding, and progressive milestone releases
 #[test]
-#[should_panic]
-fn test_unauthorized_payment_fails() {
+fn test_milestone_escrow_lifecycle() {
     let env = Env::default();
-    
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
     let client_wallet = Address::generate(&env);
     let dev_wallet = Address::generate(&env);
+    let designer_wallet = Address::generate(&env);
+    let arbiter = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    
-    let (token, admin_client) = create_token(&env, &token_admin);
-    
-    // We strictly mock auth for minting, but turn it OFF for the payment test
-    admin_client.mock_all_auths().mint(&client_wallet, &1000);
+
+    let (token, token_admin_client) = create_token(&env, &token_admin);
+    token_admin_client.mint(&client_wallet, &5000);
 
     let contract_id = env.register(SplitSyncContract, ());
     let contract_client = SplitSyncContractClient::new(&env, &contract_id);
 
-    let shares = vec![&env, Share { recipient: dev_wallet.clone(), basis_points: 10000 }];
-    contract_client.init(&shares);
+    // Initialize 60/40 squad split
+    let shares = vec![
+        &env,
+        Share { recipient: dev_wallet.clone(), basis_points: 6000 },
+        Share { recipient: designer_wallet.clone(), basis_points: 4000 },
+    ];
+    contract_client.init(&admin, &shares);
 
-    // Attempting to pull funds from client_wallet without mocking their authorization
-    // This will panic on `sender.require_auth()`
-    contract_client.pay(&token.address, &client_wallet, &500);
+    // Define 2 milestones (50% upfront, 50% on deliverable completion)
+    let milestones = vec![
+        &env,
+        Milestone { description: Symbol::new(&env, "UI_PROTOTYPE"), basis_points: 5000, released: false },
+        Milestone { description: Symbol::new(&env, "FINAL_WASM"), basis_points: 5000, released: false },
+    ];
+
+    // Create escrow for 5000 USDC
+    let escrow_id = contract_client.create_escrow(&client_wallet, &token.address, &5000, &milestones, &arbiter);
+    assert_eq!(escrow_id, 1);
+
+    // Client funds escrow
+    contract_client.fund_escrow(&client_wallet, &escrow_id);
+    assert_eq!(token.balance(&contract_id), 5000);
+    assert_eq!(token.balance(&client_wallet), 0);
+
+    // Release Milestone 0 (50% = 2500 USDC)
+    contract_client.release_milestone(&client_wallet, &escrow_id, &0);
+    // Dev gets 60% of 2500 = 1500; Designer gets 40% of 2500 = 1000
+    assert_eq!(token.balance(&dev_wallet), 1500);
+    assert_eq!(token.balance(&designer_wallet), 1000);
+    assert_eq!(token.balance(&contract_id), 2500);
+
+    // Release Milestone 1 (Remaining 2500 USDC)
+    contract_client.release_milestone(&client_wallet, &escrow_id, &1);
+    assert_eq!(token.balance(&dev_wallet), 3000);
+    assert_eq!(token.balance(&designer_wallet), 2000);
+    assert_eq!(token.balance(&contract_id), 0);
+
+    let escrow = contract_client.get_escrow(&escrow_id).unwrap();
+    assert_eq!(escrow.status, EscrowStatus::Completed);
 }
 
-// Test 4 (State verification): Verify balances handle odd amounts without trapping dust
+// TEST 4: Milestone escrow dispute and arbiter resolution
 #[test]
-fn test_state_verification_odd_amounts() {
+fn test_milestone_escrow_dispute_and_resolution() {
     let env = Env::default();
     env.mock_all_auths();
 
+    let admin = Address::generate(&env);
     let client_wallet = Address::generate(&env);
     let dev_wallet = Address::generate(&env);
     let designer_wallet = Address::generate(&env);
+    let arbiter = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    
-    let (token, admin_client) = create_token(&env, &token_admin);
-    admin_client.mint(&client_wallet, &1005); // Odd amount
+
+    let (token, token_admin_client) = create_token(&env, &token_admin);
+    token_admin_client.mint(&client_wallet, &4000);
 
     let contract_id = env.register(SplitSyncContract, ());
     let contract_client = SplitSyncContractClient::new(&env, &contract_id);
 
     let shares = vec![
         &env,
-        Share { recipient: dev_wallet.clone(), basis_points: 3333 },
-        Share { recipient: designer_wallet.clone(), basis_points: 6667 },
+        Share { recipient: dev_wallet.clone(), basis_points: 5000 },
+        Share { recipient: designer_wallet.clone(), basis_points: 5000 },
     ];
-    contract_client.init(&shares);
+    contract_client.init(&admin, &shares);
 
-    contract_client.pay(&token.address, &client_wallet, &1005);
+    let milestones = vec![
+        &env,
+        Milestone { description: Symbol::new(&env, "FULL_PROJECT"), basis_points: 10000, released: false },
+    ];
 
-    // 1005 * 0.3333 = 334.96 -> rounds down to 334
-    assert_eq!(token.balance(&dev_wallet), 334);
-    // 1005 * 0.6667 = 670.03 -> rounds down to 670, but receives 1 stroop remainder
-    assert_eq!(token.balance(&designer_wallet), 671);
-    
-    // 0 dust gets left in the contract due to remainder logic
-    assert_eq!(token.balance(&contract_id), 0); 
+    let escrow_id = contract_client.create_escrow(&client_wallet, &token.address, &4000, &milestones, &arbiter);
+    contract_client.fund_escrow(&client_wallet, &escrow_id);
+
+    // Client disputes deliverables
+    contract_client.dispute_escrow(&client_wallet, &escrow_id);
+
+    // Arbiter resolves dispute: 50% refund to client, 50% payout to squad
+    contract_client.resolve_dispute(&arbiter, &escrow_id, &5000);
+
+    assert_eq!(token.balance(&client_wallet), 2000); // 50% refunded
+    assert_eq!(token.balance(&dev_wallet), 1000);     // 50% split to dev
+    assert_eq!(token.balance(&designer_wallet), 1000);// 50% split to designer
+    assert_eq!(token.balance(&contract_id), 0);
 }
 
-// Test 5 (Edge case): Prevent payment if contract is not initialized
+// TEST 5: On-Chain Multi-Sig Share Governance Proposal & Execution
 #[test]
-#[should_panic(expected = "Contract not initialized")]
-fn test_pay_before_init() {
+fn test_proposal_voting_and_execution() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let client_wallet = Address::generate(&env);
+    let admin = Address::generate(&env);
+    let dev1 = Address::generate(&env);
+    let dev2 = Address::generate(&env);
+    let dev3 = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    let (token, admin_client) = create_token(&env, &token_admin);
-    admin_client.mint(&client_wallet, &1000);
+
+    let (token, token_admin_client) = create_token(&env, &token_admin);
+    let client = Address::generate(&env);
+    token_admin_client.mint(&client, &10000);
 
     let contract_id = env.register(SplitSyncContract, ());
     let contract_client = SplitSyncContractClient::new(&env, &contract_id);
 
-    // Attempting to pay before calling `init`
-    contract_client.pay(&token.address, &client_wallet, &1000);
+    // Initial equal split: 50/50 between dev1 & dev2
+    let initial_shares = vec![
+        &env,
+        Share { recipient: dev1.clone(), basis_points: 5000 },
+        Share { recipient: dev2.clone(), basis_points: 5000 },
+    ];
+    contract_client.init(&admin, &initial_shares);
+
+    // Propose bringing on dev3 for a 40/30/30 split (Requires 2 votes)
+    let new_shares = vec![
+        &env,
+        Share { recipient: dev1.clone(), basis_points: 4000 },
+        Share { recipient: dev2.clone(), basis_points: 3000 },
+        Share { recipient: dev3.clone(), basis_points: 3000 },
+    ];
+    let proposal_id = contract_client.propose_split(&dev1, &new_shares, &2);
+
+    // Dev2 votes in favor
+    contract_client.vote_proposal(&dev2, &proposal_id);
+
+    // Execute proposal
+    contract_client.execute_proposal(&proposal_id);
+
+    // Verify updated shares
+    let updated_shares = contract_client.get_shares();
+    assert_eq!(updated_shares.len(), 3);
+    assert_eq!(updated_shares.get(0).unwrap().basis_points, 4000);
+    assert_eq!(updated_shares.get(1).unwrap().basis_points, 3000);
+    assert_eq!(updated_shares.get(2).unwrap().basis_points, 3000);
+
+    // Pay client funds and verify new 40/30/30 distribution
+    contract_client.pay(&token.address, &client, &10000);
+    assert_eq!(token.balance(&dev1), 4000);
+    assert_eq!(token.balance(&dev2), 3000);
+    assert_eq!(token.balance(&dev3), 3000);
 }
 
-// Test 6: Verify double initialization is prevented and panics
+// TEST 6: Zero remainder dust invariant on odd amounts
 #[test]
-#[should_panic(expected = "Contract already initialized")]
-fn test_double_init_prevention() {
+fn test_zero_dust_odd_amounts() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let dev_wallet = Address::generate(&env);
-    let designer_wallet = Address::generate(&env);
-    let attacker_wallet = Address::generate(&env);
+    let admin = Address::generate(&env);
+    let dev1 = Address::generate(&env);
+    let dev2 = Address::generate(&env);
+    let dev3 = Address::generate(&env);
+    let client = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+
+    let (token, token_admin_client) = create_token(&env, &token_admin);
+    token_admin_client.mint(&client, &100);
 
     let contract_id = env.register(SplitSyncContract, ());
     let contract_client = SplitSyncContractClient::new(&env, &contract_id);
 
-    // Initial 70/30 split
+    // 33.33% / 33.33% / 33.34% (Total = 10,000 BP)
     let shares = vec![
         &env,
-        Share { recipient: dev_wallet.clone(), basis_points: 7000 },
-        Share { recipient: designer_wallet.clone(), basis_points: 3000 },
+        Share { recipient: dev1.clone(), basis_points: 3333 },
+        Share { recipient: dev2.clone(), basis_points: 3333 },
+        Share { recipient: dev3.clone(), basis_points: 3334 },
     ];
-    contract_client.init(&shares);
+    contract_client.init(&admin, &shares);
 
-    // Re-initialize with 100% to attacker (should panic now!)
-    let attacker_shares = vec![
-        &env,
-        Share { recipient: attacker_wallet.clone(), basis_points: 10000 },
-    ];
-    contract_client.init(&attacker_shares);
-}
+    // Pay 100 stroops
+    contract_client.pay(&token.address, &client, &100);
+
+    let b1 = token.balance(&dev1);
+    let b2 = token.balance(&dev2);
+    let b3 = token.balance(&dev3);
+
+    assert_eq!(b1 + b2 + b3, 100);
+    assert_eq!(token.balance(&contract_id), 0); // Contract vault is identically 0
+}

@@ -595,9 +595,9 @@ Tests:       22 passed, 22 total (100% Pass Rate)`}
 
             {/* Contract Code */}
             <div className="mb-8">
-              <h3 className="text-lg font-semibold text-white mb-2">7.1 Soroban Rust Smart Contract Reference</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">7.1 Complete Soroban Rust Contract Architecture</h3>
               <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-3">
-                The smart contract exposes two primary external entrypoints: <code>init</code> and <code>pay</code>.
+                The SplitSync Soroban smart contract is a modular protocol comprising 3 integrated engines: <strong>Instant Zero-Dust Splitter</strong>, <strong>Multi-Stage Milestone Escrow with Arbiter Resolution</strong>, and <strong>On-Chain Multi-Sig Share Governance</strong>.
               </p>
               <div className="bg-[#0f172a] border border-slate-800 rounded-lg overflow-hidden my-3">
                 <div className="bg-[#1e293b]/60 px-4 py-2 flex items-center justify-between border-b border-slate-800 text-xs font-mono text-slate-400">
@@ -605,7 +605,7 @@ Tests:       22 passed, 22 total (100% Pass Rate)`}
                   <button
                     onClick={() =>
                       copyCode(
-                        `pub fn init(env: Env, shares: Vec<SplitShare>) -> Result<(), Error> {\n    let mut total_bp: u32 = 0;\n    for share in shares.iter() {\n        total_bp += share.basis_points;\n    }\n    if total_bp != 10000 {\n        return Err(Error::InvalidBasisPoints);\n    }\n    env.storage().instance().set(&DataKey::Shares, &shares);\n    Ok(())\n}\n\npub fn pay(env: Env, payer: Address, token: Address, total_amount: i128) -> Result<(), Error> {\n    payer.require_auth();\n    let shares: Vec<SplitShare> = env.storage().instance().get(&DataKey::Shares).unwrap();\n    let token_client = token::Client::new(&env, &token);\n    let mut total_dispersed: i128 = 0;\n    for (i, share) in shares.iter().enumerate() {\n        let payout = if i == shares.len() - 1 {\n            total_amount - total_dispersed\n        } else {\n            (total_amount * (share.basis_points as i128)) / 10000\n        };\n        total_dispersed += payout;\n        token_client.transfer(&payer, &share.recipient, &payout);\n    }\n    Ok(())\n}`,
+                        `pub fn init(env: Env, admin: Address, shares: Vec<Share>) -> Result<(), Error>;\npub fn pay(env: Env, token: Address, sender: Address, amount: i128) -> Result<(), Error>;\npub fn create_escrow(env: Env, payer: Address, token: Address, total_amount: i128, milestones: Vec<Milestone>, arbiter: Address) -> Result<u64, Error>;\npub fn fund_escrow(env: Env, payer: Address, escrow_id: u64) -> Result<(), Error>;\npub fn release_milestone(env: Env, payer: Address, escrow_id: u64, milestone_index: u32) -> Result<(), Error>;\npub fn dispute_escrow(env: Env, caller: Address, escrow_id: u64) -> Result<(), Error>;\npub fn resolve_dispute(env: Env, arbiter: Address, escrow_id: u64, refund_payer_basis_points: u32) -> Result<(), Error>;\npub fn propose_split(env: Env, proposer: Address, new_shares: Vec<Share>, required_votes: u32) -> Result<u64, Error>;\npub fn vote_proposal(env: Env, voter: Address, proposal_id: u64) -> Result<(), Error>;\npub fn execute_proposal(env: Env, proposal_id: u64) -> Result<(), Error>;`,
                         "sc-full-code"
                       )
                     }
@@ -615,42 +615,49 @@ Tests:       22 passed, 22 total (100% Pass Rate)`}
                   </button>
                 </div>
                 <pre className="p-4 text-xs font-mono text-emerald-300/90 overflow-x-auto leading-relaxed">
-{`pub fn init(env: Env, shares: Vec<SplitShare>) -> Result<(), Error> {
-    let mut total_bp: u32 = 0;
-    for share in shares.iter() {
-        total_bp += share.basis_points;
-    }
-    if total_bp != 10000 {
-        return Err(Error::InvalidBasisPoints);
-    }
-    env.storage().instance().set(&DataKey::Shares, &shares);
-    Ok(())
-}
+{`// 1. Initializer & Instant Zero-Dust Payment
+pub fn init(env: Env, admin: Address, shares: Vec<Share>) -> Result<(), Error>;
+pub fn pay(env: Env, token: Address, sender: Address, amount: i128) -> Result<(), Error>;
 
-pub fn pay(env: Env, payer: Address, token: Address, total_amount: i128) -> Result<(), Error> {
-    payer.require_auth();
-    let shares: Vec<SplitShare> = env.storage().instance().get(&DataKey::Shares).unwrap();
-    let token_client = token::Client::new(&env, &token);
-    
-    let mut total_dispersed: i128 = 0;
-    for (i, share) in shares.iter().enumerate() {
-        let payout = if i == shares.len() - 1 {
-            total_amount - total_dispersed // Remainder routed cleanly
-        } else {
-            (total_amount * (share.basis_points as i128)) / 10000
-        };
-        total_dispersed += payout;
-        token_client.transfer(&payer, &share.recipient, &payout);
-    }
-    Ok(())
-}`}
+// 2. On-Chain Milestone Escrow & Arbitration Module
+pub fn create_escrow(env: Env, payer: Address, token: Address, total_amount: i128, milestones: Vec<Milestone>, arbiter: Address) -> Result<u64, Error>;
+pub fn fund_escrow(env: Env, payer: Address, escrow_id: u64) -> Result<(), Error>;
+pub fn release_milestone(env: Env, payer: Address, escrow_id: u64, milestone_index: u32) -> Result<(), Error>;
+pub fn dispute_escrow(env: Env, caller: Address, escrow_id: u64) -> Result<(), Error>;
+pub fn resolve_dispute(env: Env, arbiter: Address, escrow_id: u64, refund_payer_basis_points: u32) -> Result<(), Error>;
+
+// 3. Multi-Sig Governance & Dynamic Share Revision Module
+pub fn propose_split(env: Env, proposer: Address, new_shares: Vec<Share>, required_votes: u32) -> Result<u64, Error>;
+pub fn vote_proposal(env: Env, voter: Address, proposal_id: u64) -> Result<(), Error>;
+pub fn execute_proposal(env: Env, proposal_id: u64) -> Result<(), Error>;
+
+// 4. Queries & Getters
+pub fn get_shares(env: Env) -> Result<Vec<Share>, Error>;
+pub fn get_escrow(env: Env, escrow_id: u64) -> Option<Escrow>;
+pub fn get_proposal(env: Env, proposal_id: u64) -> Option<Proposal>;`}
                 </pre>
               </div>
             </div>
 
+            {/* Escrow Details */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-white mb-2">7.2 On-Chain Milestone Escrow & Arbitration Engine</h3>
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-3">
+                Clients lock contract funds into the Soroban escrow vault via <code>fund_escrow</code>. Deliverable milestones (e.g. 50% upfront, 50% final WASM) are released progressively via <code>release_milestone</code>, which automatically computes and disperses each milestone payout across squad member shares in a single atomic transaction. Contested contracts trigger <code>dispute_escrow</code>, allowing a designated third-party arbiter to execute fractional refunds via <code>resolve_dispute</code>.
+              </p>
+            </div>
+
+            {/* Governance Details */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-white mb-2">7.3 On-Chain Multi-Sig Squad Governance</h3>
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-3">
+                Squad members can adapt revenue allocations as contributor roles change without deploying new smart contracts. A proposer initiates <code>propose_split</code> with new basis points allocations and a signature threshold. Squad members sign on-chain votes via <code>vote_proposal</code>. Once quorum is satisfied, <code>execute_proposal</code> updates the live storage shares atomically.
+              </p>
+            </div>
+
             {/* Inter-contract */}
             <div id="inter-contract" className="mb-8 scroll-mt-24">
-              <h3 className="text-lg font-semibold text-white mb-2">7.2 SAC Token Client Communication</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">7.4 SAC Token Client Communication</h3>
               <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-3">
                 SplitSync delegates asset transfers directly to the official Stellar Asset Contract via <code>token::Client::new(&env, &token)</code>. This ensures zero custody risk: the contract never holds client funds in an intermediate balance—all transfers execute atomically from payer to recipients in the same transaction block.
               </p>

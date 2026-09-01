@@ -238,12 +238,19 @@ SplitSync is designed as a sustainable Web3 business on Stellar. Complete metric
 
 ## 🛡️ Smart Contract Architecture & Security Audit
 
-The SplitSync Soroban smart contract is built with Rust and verified for mathematical precision and zero-dust invariant:
+The SplitSync Soroban smart contract is built with Rust and verified for mathematical precision, zero-dust invariants, progressive milestone escrows, and on-chain governance:
 
 * **Source Code:** [`split_sync/contracts/split_sync/src/lib.rs`](split_sync/contracts/split_sync/src/lib.rs)
+* **Contract Unit Tests (6/6 Passing):** [`split_sync/contracts/split_sync/src/test.rs`](split_sync/contracts/split_sync/src/test.rs)
 * **Security Audit Document:** [`docs/SplitSync_Security_Audit.md`](docs/SplitSync_Security_Audit.md)
 * **Developer Ecosystem Tutorial:** [`docs/SplitSync_Developer_Tutorial.md`](docs/SplitSync_Developer_Tutorial.md)
 * **Mainnet Deployment Guide:** [`docs/Mainnet_Deployment_Guide.md`](docs/Mainnet_Deployment_Guide.md)
+
+### On-Chain Soroban Modules:
+1. **Instant Atomic Zero-Dust Split Engine (`pay`)**: Routes 100% of tokens without trapping fractional division remainder stroops.
+2. **On-Chain Milestone Escrow & Arbitration (`create_escrow`, `fund_escrow`, `release_milestone`, `dispute_escrow`, `resolve_dispute`)**: Multi-stage escrow locking with progressive releases and third-party arbiter dispute resolution.
+3. **On-Chain Multi-Sig Squad Governance (`propose_split`, `vote_proposal`, `execute_proposal`)**: Allows squad members to dynamically adjust percentage shares on-chain once signature quorum is reached.
+4. **Typed Error Enums & Native Event Publishing**: Emits structured topics (`SPLIT`, `ESCROW`, `PROP`) and custom typed contract error codes (`Error::InvalidBasisPoints`, `Error::QuorumNotReached`, `Error::MilestoneAlreadyReleased`).
 
 ```rust
 // Core Zero-Dust Division Algorithm (Soroban Rust)

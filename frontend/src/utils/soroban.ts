@@ -242,6 +242,206 @@ export async function getRealAccountBalance(
   }
 }
 
+/**
+ * Builds a single Milestone struct ScVal.
+ */
+export function buildMilestoneScVal(description: string, basisPoints: number): xdr.ScVal {
+  const descScVal = xdr.ScVal.scvSymbol(description.trim().substring(0, 32));
+  const basisPointsScVal = nativeToScVal(basisPoints, { type: "u32" });
+  const releasedScVal = nativeToScVal(false);
+
+  return xdr.ScVal.scvMap([
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol("basis_points"),
+      val: basisPointsScVal,
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol("description"),
+      val: descScVal,
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol("released"),
+      val: releasedScVal,
+    }),
+  ]);
+}
+
+/**
+ * Prepares the transaction to create a multi-stage milestone escrow.
+ */
+export async function prepareCreateEscrowTx(
+  senderAddress: string,
+  payerAddress: string,
+  tokenAddress: string,
+  totalAmount: string,
+  milestones: { description: string; basisPoints: number }[],
+  arbiterAddress: string
+): Promise<string> {
+  const server = new rpc.Server(RPC_URL);
+  const account = await server.getAccount(senderAddress.trim());
+
+  const payerScVal = nativeToScVal(Address.fromString(payerAddress.trim()));
+  const tokenScVal = nativeToScVal(Address.fromString(tokenAddress.trim()));
+  const totalAmountScVal = nativeToScVal(BigInt(totalAmount), { type: "i128" });
+  const milestonesVecScVal = xdr.ScVal.scvVec(
+    milestones.map((m) => buildMilestoneScVal(m.description, m.basisPoints))
+  );
+  const arbiterScVal = nativeToScVal(Address.fromString(arbiterAddress.trim()));
+
+  const contract = new Contract(CONTRACT_ID);
+  const operation = contract.call(
+    "create_escrow",
+    payerScVal,
+    tokenScVal,
+    totalAmountScVal,
+    milestonesVecScVal,
+    arbiterScVal
+  );
+
+  const tx = new TransactionBuilder(
+    new Account(senderAddress.trim(), account.sequenceNumber()),
+    {
+      fee: "100000",
+      networkPassphrase: Networks.TESTNET,
+    }
+  )
+    .addOperation(operation)
+    .setTimeout(30)
+    .build();
+
+  const simulated = await server.simulateTransaction(tx);
+  if (rpc.Api.isSimulationError(simulated)) {
+    throw new Error(`Simulation failed: ${simulated.error}`);
+  }
+
+  const assembledTx = rpc.assembleTransaction(tx, simulated).build();
+  return assembledTx.toXDR();
+}
+
+/**
+ * Prepares the transaction to fund an escrow.
+ */
+export async function prepareFundEscrowTx(
+  payerAddress: string,
+  escrowId: number
+): Promise<string> {
+  const server = new rpc.Server(RPC_URL);
+  const account = await server.getAccount(payerAddress.trim());
+
+  const payerScVal = nativeToScVal(Address.fromString(payerAddress.trim()));
+  const escrowIdScVal = nativeToScVal(BigInt(escrowId), { type: "u64" });
+
+  const contract = new Contract(CONTRACT_ID);
+  const operation = contract.call("fund_escrow", payerScVal, escrowIdScVal);
+
+  const tx = new TransactionBuilder(
+    new Account(payerAddress.trim(), account.sequenceNumber()),
+    {
+      fee: "100000",
+      networkPassphrase: Networks.TESTNET,
+    }
+  )
+    .addOperation(operation)
+    .setTimeout(30)
+    .build();
+
+  const simulated = await server.simulateTransaction(tx);
+  if (rpc.Api.isSimulationError(simulated)) {
+    throw new Error(`Simulation failed: ${simulated.error}`);
+  }
+
+  const assembledTx = rpc.assembleTransaction(tx, simulated).build();
+  return assembledTx.toXDR();
+}
+
+/**
+ * Prepares the transaction to release a completed milestone.
+ */
+export async function prepareReleaseMilestoneTx(
+  payerAddress: string,
+  escrowId: number,
+  milestoneIndex: number
+): Promise<string> {
+  const server = new rpc.Server(RPC_URL);
+  const account = await server.getAccount(payerAddress.trim());
+
+  const payerScVal = nativeToScVal(Address.fromString(payerAddress.trim()));
+  const escrowIdScVal = nativeToScVal(BigInt(escrowId), { type: "u64" });
+  const milestoneIndexScVal = nativeToScVal(milestoneIndex, { type: "u32" });
+
+  const contract = new Contract(CONTRACT_ID);
+  const operation = contract.call(
+    "release_milestone",
+    payerScVal,
+    escrowIdScVal,
+    milestoneIndexScVal
+  );
+
+  const tx = new TransactionBuilder(
+    new Account(payerAddress.trim(), account.sequenceNumber()),
+    {
+      fee: "100000",
+      networkPassphrase: Networks.TESTNET,
+    }
+  )
+    .addOperation(operation)
+    .setTimeout(30)
+    .build();
+
+  const simulated = await server.simulateTransaction(tx);
+  if (rpc.Api.isSimulationError(simulated)) {
+    throw new Error(`Simulation failed: ${simulated.error}`);
+  }
+
+  const assembledTx = rpc.assembleTransaction(tx, simulated).build();
+  return assembledTx.toXDR();
+}
+
+/**
+ * Prepares the transaction to propose a new split revision.
+ */
+export async function prepareProposeSplitTx(
+  proposerAddress: string,
+  newShares: { recipient: string; basisPoints: number }[],
+  requiredVotes: number
+): Promise<string> {
+  const server = new rpc.Server(RPC_URL);
+  const account = await server.getAccount(proposerAddress.trim());
+
+  const proposerScVal = nativeToScVal(Address.fromString(proposerAddress.trim()));
+  const newSharesVecScVal = xdr.ScVal.scvVec(
+    newShares.map((s) => buildShareScVal(s.recipient, s.basisPoints))
+  );
+  const requiredVotesScVal = nativeToScVal(requiredVotes, { type: "u32" });
+
+  const contract = new Contract(CONTRACT_ID);
+  const operation = contract.call(
+    "propose_split",
+    proposerScVal,
+    newSharesVecScVal,
+    requiredVotesScVal
+  );
+
+  const tx = new TransactionBuilder(
+    new Account(proposerAddress.trim(), account.sequenceNumber()),
+    {
+      fee: "100000",
+      networkPassphrase: Networks.TESTNET,
+    }
+  )
+    .addOperation(operation)
+    .setTimeout(30)
+    .build();
+
+  const simulated = await server.simulateTransaction(tx);
+  if (rpc.Api.isSimulationError(simulated)) {
+    throw new Error(`Simulation failed: ${simulated.error}`);
+  }
+
+  const assembledTx = rpc.assembleTransaction(tx, simulated).build();
+  return assembledTx.toXDR();
+}
+
 export { formatTokenAmount } from "./format";
 
 
